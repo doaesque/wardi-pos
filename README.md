@@ -1,60 +1,59 @@
-# WardiPOS - Pangkalan Wardi Sukardi
+# WardiPOS - Sistem Manajemen Pangkalan LPG 3kg
 
-Sistem Informasi Pencatatan Transaksi Penjualan dan Rekapitulasi Penjualan LPG 3 Kg berbasis Web. Sistem ini dibangun khusus untuk kebutuhan manajerial internal pangkalan guna mengotomatisasi pencatatan NIK, memvalidasi kuota subsidi, dan meminimalisir selisih uang setoran harian.
-
-## Tech Stack
-
-* **Frontend & Backend:** Next.js (App Router) + TypeScript
-* **Styling:** Tailwind CSS
-* **Database:** PostgreSQL
-* **ORM:** Prisma
+WardiPOS adalah sistem manajemen berbasis *web* yang dirancang khusus untuk pangkalan LPG 3kg untuk mempermudah pencatatan transaksi, pengelolaan data pelanggan, dan monitoring performa karyawan dengan antarmuka yang responsif.
 
 ## Fitur Utama
 
-* **Master Data Pelanggan:** Pendaftaran NIK (One-Time Registration) agar tidak perlu menginput berulang kali.
-* **Validasi Kuota Otomatis:** Sistem akan mengunci transaksi jika pelanggan melampaui batas yang ditetapkan:
-  * Rumah Tangga: 1 tabung/hari
-  * Usaha Mikro: 2 tabung/hari
-  * Pengecer: 10 tabung/minggu
-* **Manajemen Pembayaran:** Pencatatan status pembayaran (Tunai/Transfer) untuk mencocokkan uang setoran kasir.
-* **Cetak Nota Digital:** Pembuatan bukti transaksi yang sah.
-* **Ekspor Rekapitulasi:** Menghasilkan laporan NIK yang siap disandingkan untuk input ke sistem Pertamina.
+- **Sistem Kasir Modern:** Antarmuka kasir yang interaktif, mendukung *checkout* cepat, dan otomatis mengunduh nota transaksi dalam format gambar.
+- **Batasan Pembelian Otomatis:** Sistem proteksi kuota harian untuk pelanggan Rumah Tangga/Usaha Mikro dan kuota mingguan untuk Pengecer.
+- **Manajemen Pelanggan:** Registrasi pelanggan dengan kategorisasi (RT, UM, Pengecer) yang dilengkapi fitur riwayat pembelian historis.
+- **Filter Transaksi Lanjutan:** Fitur pencarian transaksi yang fleksibel berdasarkan ID, nama pelanggan, bulan, tahun, hingga tanggal spesifik.
+- **Monitoring Performa Karyawan:** Pemantauan sesi kerja staf, durasi login, dan jumlah transaksi yang ditangani oleh tiap karyawan.
+- **Responsif (Mobile-First):** Desain yang dioptimalkan untuk penggunaan di *smartphone* maupun desktop, dengan fitur *floating cart* pada perangkat seluler.
 
-## Cara Instalasi (Local Development)
+## Teknologi
 
-1. **Clone repository ini:**
+- **Framework:** [Next.js 16](https://nextjs.org/) (Turbopack)
+- **Database:** [PostgreSQL](https://www.postgresql.org/) via [Supabase](https://supabase.com/)
+- **ORM:** [Prisma](https://www.prisma.io/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Icons:** [Lucide React](https://lucide.dev/)
+
+## Instalasi
+
+1. **Clone repositori:**
 
 ```bash
-   git clone git@github.com:doaesque/wardipos.git
+git clone [https://github.com/doaesque/wardi-pos.git](https://github.com/doaesque/wardi-pos.git)
 
 ```
 
-1. **Masuk ke direktori dan install dependencies:**
+2. **Instal dependensi:**
 
 ```bash
-   cd wardipos
-   npm install
+npm install
 
 ```
 
-1. **Setup Environment Variables:**
-Buat file `.env` di root folder dan masukkan string koneksi database PostgreSQL:
+3. **Konfigurasi Environment:**
+
+Buat berkas `.env` dan tambahkan URL basis data Anda:
 
 ```env
-   DATABASE_URL="postgresql://user:password@host:port/dbname"
+DATABASE_URL="your_supabase_database_url"
 
 ```
 
-1. **Sinkronisasi Prisma dengan Database:**
+4. **Jalankan Prisma Generate:**
 
 ```bash
-   npx prisma db push
+npx prisma generate
 
 ```
 
-1. **Jalankan local server:**
+5. **Jalankan Aplikasi:**
 
 ```bash
-   npm run dev
+npm run dev
 
 ```
