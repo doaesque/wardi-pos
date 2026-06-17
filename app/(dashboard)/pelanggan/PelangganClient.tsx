@@ -103,7 +103,7 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
   };
 
   return (
-    <div className="flex flex-col-reverse lg:flex-row gap-8 relative">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start relative">
       {notification && (
         <div className={`fixed top-20 md:top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium w-[90%] md:w-auto transition-all ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-900 dark:text-green-300' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-300'}`}>
           {notification.type === 'success' ? <CheckCircle size={18} className="shrink-0" /> : <AlertTriangle size={18} className="shrink-0" />}
@@ -112,7 +112,7 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
       )}
 
       {/* left section (table) */}
-      <div className="flex-1 space-y-4">
+      <div className="w-full space-y-4">
         <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
           <div className="flex-1 relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
@@ -165,8 +165,8 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
       </div>
 
       {/* right section (form) */}
-      <div className="w-full lg:w-80">
-        <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm lg:sticky lg:top-8">
+      <div className="w-full lg:sticky lg:top-8">
+        <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm">
           <div className="flex items-center gap-2 mb-6 text-zinc-900 dark:text-white font-semibold">
             <UserPlus size={20} className="text-[#52796F]" />
             <h3>Registrasi Pelanggan</h3>
