@@ -1,13 +1,18 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Filter, Calendar, ChevronDown, Download } from 'lucide-react';
+import { Search, Filter, Calendar, ChevronDown, Download, FileText, FileSpreadsheet, File as FileIcon } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
+// define types
 type Transaksi = { id: string; tanggalTransaksi: Date; jumlahTabung: number; totalHarga: number; metodePembayaran: string; pelanggan: { nama: string; kategori: string } | null; kasir: { nama: string } | null; };
 
 export function TransaksiClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<'semua' | 'bulan' | 'spesifik'>('semua');
+  const [exportDropdown, setExportDropdown] = useState(false);
   
   const currentYear = new Date().getFullYear();
   const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
@@ -65,6 +70,68 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setExportDropdown(false);
+  };
+
+  // function to generate and download real xlsx
+  const handleExportXLSX = () => {
+    const headers = ['ID Transaksi', 'Tanggal', 'Waktu', 'Nama Pelanggan', 'Kategori', 'Nama Kasir', 'Metode Pembayaran', 'Jumlah Tabung', 'Total Harga'];
+    
+    const rows = filteredData.map(trx => {
+      const date = new Date(trx.tanggalTransaksi);
+      return [
+        trx.id,
+        date.toLocaleDateString('id-ID'),
+        date.toLocaleTimeString('id-ID'),
+        trx.pelanggan?.nama || 'Umum',
+        trx.pelanggan?.kategori || '-',
+        trx.kasir?.nama || '-',
+        trx.metodePembayaran,
+        trx.jumlahTabung,
+        trx.totalHarga
+      ];
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Transaksi");
+    XLSX.writeFile(workbook, `Riwayat_Transaksi_WardiPOS_${new Date().getTime()}.xlsx`);
+    setExportDropdown(false);
+  };
+
+  // function to generate clean pdf using jspdf and autotable
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // add title
+    doc.setFontSize(14);
+    doc.text('Riwayat Transaksi WardiPOS', 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 22);
+
+    // generate table
+    autoTable(doc, {
+      startY: 28,
+      head: [['ID Transaksi', 'Waktu', 'Pelanggan', 'Kasir', 'Metode', 'Jumlah', 'Total (Rp)']],
+      body: filteredData.map(trx => {
+        const date = new Date(trx.tanggalTransaksi);
+        return [
+          trx.id.slice(-8).toUpperCase(),
+          `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
+          trx.pelanggan?.nama || 'Umum',
+          trx.kasir?.nama || '-',
+          trx.metodePembayaran,
+          `${trx.jumlahTabung} Tbg`,
+          trx.totalHarga.toLocaleString('id-ID')
+        ];
+      }),
+      theme: 'grid',
+      headStyles: { fillColor: [82, 121, 111] }, // matching the app's primary color
+      styles: { fontSize: 8 }
+    });
+
+    doc.save(`Riwayat_Transaksi_WardiPOS_${new Date().getTime()}.pdf`);
+    setExportDropdown(false);
   };
 
   return (
@@ -73,11 +140,11 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
       {/* dynamic stats container */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          <p className="text-sm text-zinc-500 font-medium mb-1">Total Tabung <span className="text-xs font-normal opacity-70">(Sesuai Filter)</span></p>
+          <p className="text-sm text-zinc-500 font-medium mb-1">Total Tabung</p>
           <h4 className="text-2xl font-bold text-zinc-900 dark:text-white">{totalTabungFiltered.toLocaleString('id-ID')} Tabung</h4>
         </div>
         <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          <p className="text-sm text-zinc-500 font-medium mb-1">Total Pemasukan <span className="text-xs font-normal opacity-70">(Sesuai Filter)</span></p>
+          <p className="text-sm text-zinc-500 font-medium mb-1">Total Pemasukan</p>
           <h4 className="text-2xl font-bold text-[#52796F]">Rp {totalUangFiltered.toLocaleString('id-ID')}</h4>
         </div>
       </div>
@@ -90,10 +157,27 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
           
-          <button onClick={handleExportCSV} className="flex items-center justify-center gap-2 px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors w-full md:w-auto">
-             <Download size={14} />
-             <span>Unduh CSV</span>
-          </button>
+          <div className="relative w-full md:w-auto">
+            <button onClick={() => setExportDropdown(!exportDropdown)} className="flex items-center justify-center gap-2 px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors w-full md:w-auto">
+               <Download size={14} />
+               <span>Unduh File</span>
+               <ChevronDown size={14} />
+            </button>
+            
+            {exportDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <button onClick={handleExportCSV} className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-zinc-700 dark:text-zinc-300">
+                  <FileIcon size={14} className="text-zinc-400" /> CSV
+                </button>
+                <button onClick={handleExportXLSX} className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-zinc-700 dark:text-zinc-300">
+                  <FileSpreadsheet size={14} className="text-green-600 dark:text-green-500" /> XLSX
+                </button>
+                <button onClick={handleExportPDF} className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-zinc-700 dark:text-zinc-300">
+                  <FileText size={14} className="text-red-500" /> PDF
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="relative flex items-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg w-full md:w-auto">
             <div className="pl-3 py-2 text-zinc-400 pointer-events-none"><Filter size={14} /></div>
