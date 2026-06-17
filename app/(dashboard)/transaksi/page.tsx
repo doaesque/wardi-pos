@@ -14,8 +14,7 @@ export default async function TransaksiPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Riwayat Transaksi</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Daftar seluruh transaksi penjualan LPG 3 Kg dengan fitur penyaringan data.</p>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Riwayat Transaksi</h1>
       </div>
 
       {/* pass data to client component for filtering */}
