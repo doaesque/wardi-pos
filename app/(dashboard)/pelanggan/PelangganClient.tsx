@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Eye, Edit, Trash2, UserPlus } from 'lucide-react';
-import { addCustomer, deleteCustomer } from '@/app/actions/pelanggan';
+import { Eye, Edit, Trash2, UserPlus, X } from 'lucide-react';
+import { addCustomer, deleteCustomer, editCustomer } from '@/app/actions/pelanggan';
 
 // define types based on prisma schema
 type Pelanggan = {
@@ -14,15 +14,15 @@ type Pelanggan = {
 export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState('');
+  
+  // modal state
+  const [modal, setModal] = useState<{ type: 'detail' | 'edit' | null, data: Pelanggan | null }>({ type: null, data: null });
 
   const handleDelete = (nik: string, nama: string) => {
-    // confirmation popup before deletion
     if (window.confirm(`Apakah Anda yakin ingin menghapus data pelanggan bernama ${nama} (NIK: ${nik})? Tindakan ini tidak dapat dibatalkan.`)) {
       startTransition(async () => {
         const res = await deleteCustomer(nik);
-        if (res?.error) {
-          alert(res.error);
-        }
+        if (res?.error) alert(res.error);
       });
     }
   };
@@ -44,8 +44,23 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
     });
   };
 
+  const handleEdit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    startTransition(async () => {
+      const res = await editCustomer(formData);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        alert('Data pelanggan berhasil diperbarui!');
+        setModal({ type: null, data: null }); // close modal
+      }
+    });
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
+    <div className="flex flex-col lg:flex-row gap-8 relative">
       
       {/* left section: customer table */}
       <div className="flex-1">
@@ -53,7 +68,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
           <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-400">
             <thead className="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 uppercase font-semibold border-b border-zinc-200 dark:border-zinc-800">
               <tr>
-                <th className="px-6 py-4">NIK</th>
+                <th className="px-6 py-4">Nomor Induk Kependudukan</th>
                 <th className="px-6 py-4">Nama Lengkap</th>
                 <th className="px-6 py-4">Kategori</th>
                 <th className="px-6 py-4 text-center">Aksi</th>
@@ -79,17 +94,29 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-3">
                         {/* view details button */}
-                        <button onClick={() => alert('Fitur detail sedang dalam pengembangan.')} className="text-zinc-400 hover:text-[#52796F] transition-colors" title="Lihat Detail">
+                        <button 
+                          onClick={() => setModal({ type: 'detail', data: p })} 
+                          className="text-zinc-400 hover:text-[#52796F] transition-colors" 
+                          title="Lihat Detail"
+                        >
                           <Eye size={18} />
                         </button>
                         
                         {/* edit button */}
-                        <button onClick={() => alert('Fitur ubah data sedang dalam pengembangan.')} className="text-zinc-400 hover:text-amber-500 transition-colors" title="Ubah Data">
+                        <button 
+                          onClick={() => setModal({ type: 'edit', data: p })} 
+                          className="text-zinc-400 hover:text-amber-500 transition-colors" 
+                          title="Ubah Data"
+                        >
                           <Edit size={18} />
                         </button>
 
                         {/* delete button */}
-                        <button onClick={() => handleDelete(p.nik, p.nama)} className="text-zinc-400 hover:text-red-500 transition-colors" title="Hapus Data">
+                        <button 
+                          onClick={() => handleDelete(p.nik, p.nama)} 
+                          className="text-zinc-400 hover:text-red-500 transition-colors" 
+                          title="Hapus Data"
+                        >
                           <Trash2 size={18} />
                         </button>
                       </div>
@@ -111,7 +138,6 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
           </div>
           
           <form onSubmit={handleAdd} className="space-y-4">
-            {/* error message alert */}
             {formError && (
               <div className="p-3 text-xs text-red-600 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-md">
                 {formError}
@@ -139,6 +165,67 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
           </form>
         </div>
       </div>
+
+      {/* modal overlay for detail and edit */}
+      {modal.type && modal.data && (
+        <div className="fixed inset-0 z-50 bg-zinc-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-lg w-full max-w-sm overflow-hidden border border-zinc-200 dark:border-zinc-800">
+            <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+              <h3 className="font-bold text-zinc-900 dark:text-white">
+                {modal.type === 'edit' ? 'Ubah Data Pelanggan' : 'Detail Pelanggan'}
+              </h3>
+              <button onClick={() => setModal({ type: null, data: null })} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-5">
+              {modal.type === 'detail' ? (
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <span className="block text-zinc-500 text-xs">Nomor Induk Kependudukan</span>
+                    <span className="font-mono text-zinc-900 dark:text-zinc-100">{modal.data.nik}</span>
+                  </div>
+                  <div>
+                    <span className="block text-zinc-500 text-xs">Nama Lengkap</span>
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">{modal.data.nama}</span>
+                  </div>
+                  <div>
+                    <span className="block text-zinc-500 text-xs">Kategori</span>
+                    <span className="px-2 py-1 mt-1 inline-block text-[10px] uppercase tracking-wider rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                      {modal.data.kategori}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleEdit} className="space-y-4">
+                  {/* nik is read-only because it's the primary key */}
+                  <input type="hidden" name="nik" value={modal.data.nik} />
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-500 mb-1">NIK (Tidak dapat diubah)</label>
+                    <input type="text" disabled value={modal.data.nik} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-500 cursor-not-allowed outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-500 mb-1">Nama Lengkap</label>
+                    <input type="text" name="nama" defaultValue={modal.data.nama} required className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent text-zinc-900 dark:text-white outline-none focus:border-[#52796F]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-500 mb-1">Kategori Pelanggan</label>
+                    <select name="kategori" defaultValue={modal.data.kategori} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent text-zinc-900 dark:text-white outline-none focus:border-[#52796F]">
+                      <option value="RT">Rumah Tangga (RT)</option>
+                      <option value="UM">Usaha Mikro (UM)</option>
+                      <option value="PENGECER">Pengecer</option>
+                    </select>
+                  </div>
+                  <button type="submit" disabled={isPending} className="w-full mt-2 py-2 text-sm rounded-md text-white font-medium bg-[#52796F] hover:bg-[#43645a] transition duration-200 disabled:opacity-50">
+                    {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
