@@ -1,6 +1,6 @@
 import prisma from '@/app/lib/prisma';
 import { cookies } from 'next/headers';
-import { KaryawanClient } from './KaryawanClient';
+import KaryawanClient from './KaryawanClient';
 
 export default async function KaryawanPage() {
   // get current user session to prevent self-deletion
