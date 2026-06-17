@@ -1,3 +1,5 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -33,15 +35,23 @@ model Pelanggan {
 
 // transaction history
 model Transaksi {
-  id                String           @id @default(cuid()) // unique id
-  nikPelanggan      String
-  jumlahTabung      Int
-  totalHarga        Int
-  metodePembayaran  MetodePembayaran
-  tanggalTransaksi  DateTime         @default(now())
+  id               String           @id @default(cuid()) // unique id
+  nikPelanggan     String
+  jumlahTabung     Int
+  totalHarga       Int
+  metodePembayaran MetodePembayaran
+  tanggalTransaksi DateTime         @default(now())
 
   // relation to customer
-  pelanggan         Pelanggan        @relation(fields: [nikPelanggan], references: [nik])
+  pelanggan        Pelanggan        @relation(fields: [nikPelanggan], references: [nik])
+  
+  // relation to cashier (user) for performance tracking
+  kasirId          String
+  kasir            User             @relation(fields: [kasirId], references: [id])
+  
+  // link to specific work session
+  sesiId           String?
+  sesi             SesiKerja?       @relation(fields: [sesiId], references: [id])
 }
 
 // admin/cashier users
@@ -52,4 +62,21 @@ model User {
   nama      String
   role      String   @default("KASIR") // kasir or admin
   createdAt DateTime @default(now())
+
+  // relation to transactions (performance count)
+  transaksi Transaksi[]
+  
+  // relation to work sessions (shift logs)
+  sesiKerja SesiKerja[]
+}
+
+// cashier shift/session tracking
+model SesiKerja {
+  id           String      @id @default(cuid())
+  kasirId      String
+  kasir        User        @relation(fields: [kasirId], references: [id])
+  waktuMulai   DateTime    @default(now())
+  waktuSelesai DateTime?   // null means session is still active/abruptly closed
+
+  transaksi    Transaksi[]
 }
