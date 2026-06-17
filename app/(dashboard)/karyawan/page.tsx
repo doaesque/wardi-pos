@@ -36,7 +36,6 @@ export default async function KaryawanPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Data Karyawan & Performa</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Kelola akun staf dan pantau riwayat sesi masuk (login) mereka.</p>
         </div>
       </div>
 
