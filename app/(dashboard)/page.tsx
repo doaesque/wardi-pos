@@ -21,7 +21,14 @@ export default function KasirPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const hargaPerTabung = 18000;
+  // set harga dinamis berdasarkan kategori yang dipilih
+  let hargaPerTabung = 20000; // default (rt)
+  if (selectedPelanggan) {
+    if (selectedPelanggan.kategori === 'UM' || selectedPelanggan.kategori === 'PENGECER') {
+      hargaPerTabung = 19000;
+    }
+  }
+  
   const totalHarga = jumlahTabung * hargaPerTabung;
 
   const showNotification = (message: string, type: 'success' | 'error') => {
@@ -102,7 +109,7 @@ export default function KasirPage() {
               <div className="relative" ref={searchRef}>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                  <input type="text" placeholder="Ketik inisial atau NIK..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition" />
+                  <input type="text" placeholder="Ketik nama atau NIK..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition" />
                 </div>
                 {searchQuery.length >= 1 && (
                   <div className="absolute z-10 mt-2 w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl overflow-hidden">
