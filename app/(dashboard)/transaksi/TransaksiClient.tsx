@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Filter, Calendar, ChevronDown } from 'lucide-react';
+import { Search, Filter, Calendar, ChevronDown, Download } from 'lucide-react';
 
 type Transaksi = { id: string; tanggalTransaksi: Date; jumlahTabung: number; totalHarga: number; metodePembayaran: string; pelanggan: { nama: string; kategori: string } | null; kasir: { nama: string } | null; };
 
@@ -36,17 +36,48 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
   const totalTabungFiltered = filteredData.reduce((acc, trx) => acc + trx.jumlahTabung, 0);
   const totalUangFiltered = filteredData.reduce((acc, trx) => acc + trx.totalHarga, 0);
 
+  // function to generate and download csv
+  const handleExportCSV = () => {
+    const headers = ['ID Transaksi', 'Tanggal', 'Waktu', 'Nama Pelanggan', 'Kategori', 'Nama Kasir', 'Metode Pembayaran', 'Jumlah Tabung', 'Total Harga'];
+    
+    const rows = filteredData.map(trx => {
+      const date = new Date(trx.tanggalTransaksi);
+      return [
+        trx.id,
+        date.toLocaleDateString('id-ID'),
+        date.toLocaleTimeString('id-ID'),
+        `"${trx.pelanggan?.nama || 'Umum'}"`,
+        trx.pelanggan?.kategori || '-',
+        `"${trx.kasir?.nama || '-'}"`,
+        trx.metodePembayaran,
+        trx.jumlahTabung,
+        trx.totalHarga
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Riwayat_Transaksi_WardiPOS_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-4">
       
       {/* dynamic stats container */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          <p className="text-sm text-zinc-500 font-medium mb-1">Total Tabung (Filter)</p>
+          <p className="text-sm text-zinc-500 font-medium mb-1">Total Tabung <span className="text-xs font-normal opacity-70">(Sesuai Filter)</span></p>
           <h4 className="text-2xl font-bold text-zinc-900 dark:text-white">{totalTabungFiltered.toLocaleString('id-ID')} Tabung</h4>
         </div>
         <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          <p className="text-sm text-zinc-500 font-medium mb-1">Total Pemasukan (Filter)</p>
+          <p className="text-sm text-zinc-500 font-medium mb-1">Total Pemasukan <span className="text-xs font-normal opacity-70">(Sesuai Filter)</span></p>
           <h4 className="text-2xl font-bold text-[#52796F]">Rp {totalUangFiltered.toLocaleString('id-ID')}</h4>
         </div>
       </div>
@@ -58,6 +89,12 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+          
+          <button onClick={handleExportCSV} className="flex items-center justify-center gap-2 px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors w-full md:w-auto">
+             <Download size={14} />
+             <span>Unduh CSV</span>
+          </button>
+
           <div className="relative flex items-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg w-full md:w-auto">
             <div className="pl-3 py-2 text-zinc-400 pointer-events-none"><Filter size={14} /></div>
             <select value={filterMode} onChange={(e) => setFilterMode(e.target.value as any)} className="appearance-none w-full py-2 pr-8 pl-2 bg-transparent text-sm font-medium outline-none text-zinc-700 dark:text-zinc-300 cursor-pointer">
