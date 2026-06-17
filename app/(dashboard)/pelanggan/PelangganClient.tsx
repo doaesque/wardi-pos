@@ -4,9 +4,10 @@ import { useState, useMemo, useTransition } from 'react';
 import { Eye, Edit, Trash2, UserPlus, X, Search, CheckCircle, AlertTriangle, ArrowUpDown, Loader2, ChevronDown } from 'lucide-react';
 import { addCustomer, deleteCustomer, editCustomer, getDetailRiwayatPelanggan } from '@/app/actions/pelanggan';
 
+// define types
 type Pelanggan = { nik: string; nama: string; kategori: string; };
 
-export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
+export default function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState('');
   const [filterKategori, setFilterKategori] = useState('');
@@ -93,7 +94,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
     }
   };
 
-  // set html5 validation message to indonesian
+  // custom indonesian validation message
   const handleInvalid = (e: React.InvalidEvent<HTMLInputElement | HTMLSelectElement>) => {
     (e.target as HTMLInputElement).setCustomValidity('Harap isi bidang ini.');
   };
@@ -110,7 +111,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
         </div>
       )}
 
-      {/* Bagian Kiri (Tabel) */}
+      {/* left section (table) */}
       <div className="flex-1 space-y-4">
         <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
           <div className="flex-1 relative w-full">
@@ -163,7 +164,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
         </div>
       </div>
 
-      {/* Bagian Kanan (Formulir) */}
+      {/* right section (form) */}
       <div className="w-full lg:w-80">
         <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm lg:sticky lg:top-8">
           <div className="flex items-center gap-2 mb-6 text-zinc-900 dark:text-white font-semibold">
@@ -189,7 +190,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
         </div>
       </div>
 
-      {/* Popups... */}
+      {/* popups */}
       {confirmDelete && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-sm w-full p-6 text-center shadow-xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200">
