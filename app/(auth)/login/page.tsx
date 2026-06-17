@@ -18,7 +18,7 @@ export default function LoginPage() {
 
     startTransition(async () => {
       const result = await loginUser(formData);
-      
+
       if (result?.error) {
         setError(result.error);
       } else {
@@ -30,14 +30,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
-      
+
       {/* theme toggle */}
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
 
       <div className="w-full max-w-md p-8 rounded-xl shadow-lg bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
-        
+
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
             Masuk ke Sistem
@@ -48,7 +48,7 @@ export default function LoginPage() {
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
-          
+
           {/* error banner */}
           {error && (
             <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-md">
