@@ -93,8 +93,15 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
     }
   };
 
+  // set html5 validation message to indonesian
+  const handleInvalid = (e: React.InvalidEvent<HTMLInputElement | HTMLSelectElement>) => {
+    (e.target as HTMLInputElement).setCustomValidity('Harap isi bidang ini.');
+  };
+  const handleInput = (e: React.FormEvent<HTMLInputElement | HTMLSelectElement>) => {
+    (e.target as HTMLInputElement).setCustomValidity('');
+  };
+
   return (
-    // PERUBAHAN: flex-col-reverse digunakan di sini agar Form di mobile naik ke atas
     <div className="flex flex-col-reverse lg:flex-row gap-8 relative">
       {notification && (
         <div className={`fixed top-20 md:top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium w-[90%] md:w-auto transition-all ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-900 dark:text-green-300' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-300'}`}>
@@ -108,7 +115,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
         <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
           <div className="flex-1 relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-            <input type="text" placeholder="Cari NIK atau Nama..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition-colors" />
+            <input type="text" placeholder="Ketik nama atau NIK..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition-colors" />
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
             <div className="relative w-full md:w-auto">
@@ -164,12 +171,12 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
             <h3>Registrasi Pelanggan</h3>
           </div>
           <form onSubmit={handleAdd} className="space-y-4">
-            <div><label className="block text-xs font-medium text-zinc-500 mb-1">NIK (16 Digit)</label><input type="text" name="nik" maxLength={16} required className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F]" /></div>
-            <div><label className="block text-xs font-medium text-zinc-500 mb-1">Nama Lengkap</label><input type="text" name="nama" required className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F]" /></div>
+            <div><label className="block text-xs font-medium text-zinc-500 mb-1">NIK (16 Digit)</label><input type="text" name="nik" maxLength={16} required onInvalid={handleInvalid} onInput={handleInput} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F]" /></div>
+            <div><label className="block text-xs font-medium text-zinc-500 mb-1">Nama Lengkap</label><input type="text" name="nama" required onInvalid={handleInvalid} onInput={handleInput} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F]" /></div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">Kategori</label>
               <div className="relative">
-                <select name="kategori" className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer">
+                <select name="kategori" required onInvalid={handleInvalid} onInput={handleInput} className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer">
                   <option value="RT">Rumah Tangga (RT)</option><option value="UM">Usaha Mikro (UM)</option><option value="PENGECER">Pengecer</option>
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
@@ -225,8 +232,8 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
                 <form onSubmit={handleEdit} className="space-y-4">
                   <input type="hidden" name="nik" value={modal.data.nik} />
                   <div><label className="block text-xs font-medium text-zinc-500 mb-1">NIK (Paten)</label><input type="text" disabled value={modal.data.nik} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-500 cursor-not-allowed outline-none" /></div>
-                  <div><label className="block text-xs font-medium text-zinc-500 mb-1">Nama Lengkap</label><input type="text" name="nama" defaultValue={modal.data.nama} required className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F]" /></div>
-                  <div><label className="block text-xs font-medium text-zinc-500 mb-1">Kategori Pelanggan</label><div className="relative"><select name="kategori" defaultValue={modal.data.kategori} className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer"><option value="RT">Rumah Tangga (RT)</option><option value="UM">Usaha Mikro (UM)</option><option value="PENGECER">Pengecer</option></select><ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" /></div></div>
+                  <div><label className="block text-xs font-medium text-zinc-500 mb-1">Nama Lengkap</label><input type="text" name="nama" defaultValue={modal.data.nama} required onInvalid={handleInvalid} onInput={handleInput} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F]" /></div>
+                  <div><label className="block text-xs font-medium text-zinc-500 mb-1">Kategori Pelanggan</label><div className="relative"><select name="kategori" defaultValue={modal.data.kategori} required onInvalid={handleInvalid} onInput={handleInput} className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer"><option value="RT">Rumah Tangga (RT)</option><option value="UM">Usaha Mikro (UM)</option><option value="PENGECER">Pengecer</option></select><ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" /></div></div>
                   <button type="submit" disabled={isPending} className="w-full mt-2 py-2.5 text-sm rounded-lg text-white font-semibold bg-[#52796F] hover:bg-[#43645a] disabled:opacity-50">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
                 </form>
               )}

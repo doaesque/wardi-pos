@@ -32,12 +32,29 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     });
   }, [initialData, search, filterMode, filterBulan, filterTahun, filterTanggalSpesifik]);
 
+  // calculate dynamic stats based on filtered data
+  const totalTabungFiltered = filteredData.reduce((acc, trx) => acc + trx.jumlahTabung, 0);
+  const totalUangFiltered = filteredData.reduce((acc, trx) => acc + trx.totalHarga, 0);
+
   return (
     <div className="space-y-4">
+      
+      {/* dynamic stats container */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+          <p className="text-sm text-zinc-500 font-medium mb-1">Total Tabung (Filter)</p>
+          <h4 className="text-2xl font-bold text-zinc-900 dark:text-white">{totalTabungFiltered.toLocaleString('id-ID')} Tabung</h4>
+        </div>
+        <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+          <p className="text-sm text-zinc-500 font-medium mb-1">Total Pemasukan (Filter)</p>
+          <h4 className="text-2xl font-bold text-[#52796F]">Rp {totalUangFiltered.toLocaleString('id-ID')}</h4>
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-          <input type="text" placeholder="Cari ID, Pelanggan, atau Kasir..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition-colors" />
+          <input type="text" placeholder="Ketik ID, nama pelanggan, atau nama kasir..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition-colors" />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
