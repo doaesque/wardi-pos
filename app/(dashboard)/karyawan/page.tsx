@@ -1,46 +1,35 @@
 import prisma from '@/app/lib/prisma';
-import { cookies } from 'next/headers';
 import KaryawanClient from './KaryawanClient';
 
-export default async function KaryawanPage() {
-  // get current user session to prevent self-deletion
-  const cookieStore = await cookies();
-  const session = cookieStore.get('wardi_session');
-  const currentUser = session ? JSON.parse(session.value) : null;
+// dummy current user id, should be retrieved from real auth session
+const currentUserMock = { id: 'dummy-admin-id' };
 
-  // fetch all users, their transaction count, and recent work sessions
-  const daftarKaryawan = await prisma.user.findMany({
-    select: {
-      id: true,
-      nama: true,
-      username: true,
-      role: true,
+export default async function KaryawanPage() {
+  const karyawanList = await prisma.user.findMany({
+    include: {
       _count: {
-        select: { transaksi: true },
+        select: { transaksi: true }
       },
       sesiKerja: {
+        include: {
+          _count: { select: { transaksi: true } }
+        },
         orderBy: { waktuMulai: 'desc' },
-        take: 5, // fetch last 5 sessions for performance detail
-        select: {
-          id: true,
-          waktuMulai: true,
-          waktuSelesai: true,
-        }
-      }
+        take: 5
+      },
+      // this line ensures jadwal data is retrieved and passed to the client
+      jadwalShift: true
     },
-    orderBy: { role: 'asc' },
+    orderBy: { createdAt: 'desc' }
   });
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Data Karyawan & Performa</h1>
-        </div>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Data Karyawan</h1>
       </div>
 
-      {/* pass data and current user to client component */}
-      <KaryawanClient initialData={daftarKaryawan} currentUser={currentUser} />
+      <KaryawanClient initialData={karyawanList} currentUser={currentUserMock} />
     </div>
   );
 }

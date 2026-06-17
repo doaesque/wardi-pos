@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Trash2, UserPlus, Eye, Clock, X, AlertTriangle, CheckCircle, ChevronDown, Activity, Edit, BarChart3 } from 'lucide-react';
+import { useState, useMemo, useTransition } from 'react';
+import { Trash2, UserPlus, Eye, Clock, X, AlertTriangle, CheckCircle, ChevronDown, Edit, BarChart3, Calendar, Search, ArrowUpDown } from 'lucide-react';
 import { addEmployee, deleteEmployee, editEmployee } from '@/app/actions/karyawan';
 
-// define types with optional count for transactions inside session
+// define types
 type SesiKerja = { id: string; waktuMulai: Date; waktuSelesai: Date | null; _count?: { transaksi: number } };
-type Karyawan = { id: string; nama: string; username: string; role: string; _count: { transaksi: number }; sesiKerja: SesiKerja[]; };
+type JadwalShift = { hari: string; shift: string; };
+type Karyawan = { id: string; nama: string; username: string; role: string; _count: { transaksi: number }; sesiKerja: SesiKerja[]; jadwalShift?: JadwalShift[]; };
+
+const HARI_KERJA = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+const SHIFT_KERJA = ['Pagi', 'Siang', 'Sore'];
 
 export default function KaryawanClient({ initialData, currentUser }: { initialData: Karyawan[], currentUser: any }) {
   const [isPending, startTransition] = useTransition();
@@ -14,11 +18,61 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
   const [detailModal, setDetailModal] = useState<Karyawan | null>(null);
   const [editModal, setEditModal] = useState<Karyawan | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Karyawan | null>(null);
+  
+  // search, filter, and sorting states
+  const [search, setSearch] = useState('');
+  const [filterRole, setFilterRole] = useState('');
+  const [filterHari, setFilterHari] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  // shift states
+  const [jadwalBaru, setJadwalBaru] = useState<JadwalShift[]>([]);
+  const [jadwalEdit, setJadwalEdit] = useState<JadwalShift[]>([]);
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const processedData = useMemo(() => {
+    let result = [...initialData];
+
+    // apply search & filters
+    result = result.filter(k => {
+      const matchSearch = k.nama.toLowerCase().includes(search.toLowerCase()) || k.username.toLowerCase().includes(search.toLowerCase());
+      const matchRole = filterRole ? k.role === filterRole : true;
+      const matchHari = filterHari ? (k.jadwalShift?.some(j => j.hari === filterHari) || false) : true;
+      return matchSearch && matchRole && matchHari;
+    });
+
+    // apply sorting
+    if (sortConfig !== null) {
+      result.sort((a, b) => {
+        let aValue: any = a[sortConfig.key as keyof Karyawan];
+        let bValue: any = b[sortConfig.key as keyof Karyawan];
+        
+        if (sortConfig.key === 'transaksi') {
+          aValue = a._count.transaksi;
+          bValue = b._count.transaksi;
+        }
+
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [initialData, search, filterRole, filterHari, sortConfig]);
 
   const executeDelete = () => {
     if (!confirmDelete) return;
@@ -31,19 +85,42 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
     });
   };
 
+  const toggleShift = (hari: string, shift: string, isEdit: boolean) => {
+    const target = isEdit ? jadwalEdit : jadwalBaru;
+    const setter = isEdit ? setJadwalEdit : setJadwalBaru;
+
+    const exists = target.find(j => j.hari === hari && j.shift === shift);
+    if (exists) {
+      setter(target.filter(j => !(j.hari === hari && j.shift === shift)));
+    } else {
+      setter([...target, { hari, shift }]);
+    }
+  };
+
+  const openEdit = (k: Karyawan) => {
+    setEditModal(k);
+    setJadwalEdit(k.jadwalShift || []);
+  };
+
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
+    const formData = new FormData(form);
+    formData.append('jadwal', JSON.stringify(jadwalBaru));
+
     startTransition(async () => {
-      const res = await addEmployee(new FormData(form));
-      if (res?.error) showNotification(res.error, 'error'); else { showNotification('Staf berhasil didaftarkan!', 'success'); form.reset(); }
+      const res = await addEmployee(formData);
+      if (res?.error) showNotification(res.error, 'error'); else { showNotification('Staf berhasil didaftarkan!', 'success'); form.reset(); setJadwalBaru([]); }
     });
   };
 
   const handleEdit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    formData.append('jadwal', JSON.stringify(jadwalEdit));
+
     startTransition(async () => {
-      const res = await editEmployee(new FormData(e.currentTarget));
+      const res = await editEmployee(formData);
       if (res?.error) showNotification(res.error, 'error'); else { showNotification('Data staf berhasil diperbarui!', 'success'); setEditModal(null); }
     });
   };
@@ -56,7 +133,6 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
     return jam > 0 ? `${jam}j ${menit}m` : `${menit}m`;
   };
 
-  // generate mock metrics for performance dashboard display
   const getMockMetrics = (sesiList: SesiKerja[]) => {
     let sumMinutes = 0;
     sesiList.forEach(s => {
@@ -73,7 +149,37 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
     return { hariIni, mingguIni, lembur, rasio };
   };
 
-  // custom indonesian validation message
+  // helper function to merge shift hours
+  const formatShiftHours = (shifts: string[]) => {
+    const SHIFT_HOURS: Record<string, [number, number]> = {
+      'Pagi': [8, 12],
+      'Siang': [12, 16],
+      'Sore': [16, 20]
+    };
+
+    if (!shifts || shifts.length === 0) return '-';
+
+    const sorted = shifts
+      .map(s => SHIFT_HOURS[s])
+      .filter(Boolean)
+      .sort((a, b) => a[0] - b[0]);
+
+    if (sorted.length === 0) return '-';
+
+    const merged = [sorted[0]];
+    for (let i = 1; i < sorted.length; i++) {
+      const last = merged[merged.length - 1];
+      const current = sorted[i];
+      if (last[1] >= current[0]) {
+        last[1] = Math.max(last[1], current[1]);
+      } else {
+        merged.push(current);
+      }
+    }
+
+    return merged.map(m => `${m[0].toString().padStart(2, '0')}:00 - ${m[1].toString().padStart(2, '0')}:00`).join(', ');
+  };
+
   const handleInvalid = (e: React.InvalidEvent<HTMLInputElement | HTMLSelectElement>) => {
     (e.target as HTMLInputElement).setCustomValidity('Harap isi bidang ini.');
   };
@@ -82,7 +188,7 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
   };
 
   return (
-    <div className="flex flex-col-reverse lg:flex-row gap-8 relative lg:items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start relative">
       
       {notification && (
         <div className={`fixed top-20 md:top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium w-[90%] md:w-auto transition-all ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-900 dark:text-green-300' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-300'}`}>
@@ -91,24 +197,48 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
         </div>
       )}
 
-      {/* left section (table) */}
-      <div className="flex-1 space-y-4">
+      {/* left section (table & filters) */}
+      <div className="w-full space-y-4">
+        
+        {/* search & filters bar */}
+        <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+            <input type="text" placeholder="Cari nama atau username..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition-colors" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+            <div className="relative w-full md:w-auto">
+              <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="appearance-none w-full py-2 pl-3 pr-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-medium outline-none text-zinc-700 dark:text-zinc-300 focus:border-[#52796F] cursor-pointer hover:border-zinc-300 transition-colors">
+                <option value="">Semua Peran</option><option value="KASIR">Kasir</option><option value="ADMIN">Administrator</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+            </div>
+            <div className="relative w-full md:w-auto">
+              <select value={filterHari} onChange={(e) => setFilterHari(e.target.value)} className="appearance-none w-full py-2 pl-3 pr-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-medium outline-none text-zinc-700 dark:text-zinc-300 focus:border-[#52796F] cursor-pointer hover:border-zinc-300 transition-colors">
+                <option value="">Semua Jadwal</option>
+                {HARI_KERJA.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden shadow-sm">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-400 min-w-[500px]">
-              <thead className="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 uppercase font-semibold border-b border-zinc-200 dark:border-zinc-800">
+              <thead className="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 uppercase font-semibold border-b border-zinc-200 dark:border-zinc-800 select-none">
                 <tr>
-                  <th className="px-6 py-4 whitespace-nowrap">Nama Lengkap</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Peran</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Transaksi</th>
+                  <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('nama')}><div className="flex items-center gap-2">Nama Lengkap <ArrowUpDown size={14} className="text-zinc-400" /></div></th>
+                  <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('role')}><div className="flex items-center gap-2">Peran <ArrowUpDown size={14} className="text-zinc-400" /></div></th>
+                  <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('transaksi')}><div className="flex items-center gap-2">Transaksi <ArrowUpDown size={14} className="text-zinc-400" /></div></th>
                   <th className="px-6 py-4 whitespace-nowrap text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                {initialData.length === 0 ? (
-                  <tr><td colSpan={4} className="px-6 py-8 text-center text-zinc-500">Belum ada data staf.</td></tr>
+                {processedData.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-8 text-center text-zinc-500">Data tidak ditemukan.</td></tr>
                 ) : (
-                  initialData.map((k) => (
+                  processedData.map((k) => (
                     <tr key={k.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-zinc-900 dark:text-zinc-100">{k.nama} <br/><span className="text-xs text-zinc-400 font-normal">@{k.username}</span></td>
                       <td className="px-6 py-4 whitespace-nowrap"><span className={`px-2 py-1 text-xs rounded-md font-semibold tracking-wide ${k.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'}`}>{k.role}</span></td>
@@ -116,7 +246,7 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => setDetailModal(k)} className="text-zinc-400 hover:text-[#52796F] transition-colors p-1" title="Lihat Performa"><Eye size={18} /></button>
-                          <button onClick={() => setEditModal(k)} className="text-zinc-400 hover:text-amber-500 transition-colors p-1" title="Ubah Data"><Edit size={18} /></button>
+                          <button onClick={() => openEdit(k)} className="text-zinc-400 hover:text-amber-500 transition-colors p-1" title="Ubah Data"><Edit size={18} /></button>
                           <button onClick={() => setConfirmDelete(k)} className={`p-1 transition-colors ${k.id === currentUser?.id ? 'text-zinc-300 dark:text-zinc-700 cursor-not-allowed' : 'text-zinc-400 hover:text-red-500'}`} title={k.id === currentUser?.id ? "Ini Akun Anda" : "Hapus Karyawan"} disabled={k.id === currentUser?.id}><Trash2 size={18} /></button>
                         </div>
                       </td>
@@ -129,9 +259,9 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
         </div>
       </div>
 
-      {/* right section (form) */}
-      <div className="w-full lg:w-80">
-        <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm lg:sticky lg:top-8">
+      {/* right section (form) - with self-start so it doesn't stretch and sticky works */}
+      <div className="w-full lg:sticky lg:top-8 self-start">
+        <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm">
           <div className="flex items-center gap-2 mb-6 text-zinc-900 dark:text-white font-semibold">
             <UserPlus size={20} className="text-[#52796F]" />
             <h3>Tambah Staf Baru</h3>
@@ -149,6 +279,36 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
               </div>
             </div>
+            
+            {/* shift table selector */}
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-2">Jadwal Shift (Senin - Jumat)</label>
+              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                <table className="w-full text-xs text-center">
+                  <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700">
+                    <tr>
+                      <th className="py-2 px-2 font-medium text-zinc-500 text-left">Hari</th>
+                      <th className="py-2 px-2 font-medium text-zinc-500">Pagi</th>
+                      <th className="py-2 px-2 font-medium text-zinc-500">Siang</th>
+                      <th className="py-2 px-2 font-medium text-zinc-500">Sore</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                    {HARI_KERJA.map(hari => (
+                      <tr key={hari} className="bg-white dark:bg-zinc-950">
+                        <td className="py-1.5 px-2 font-medium text-zinc-700 dark:text-zinc-300 text-left">{hari}</td>
+                        {SHIFT_KERJA.map(shift => (
+                          <td key={shift} className="py-1.5 px-2">
+                            <input type="checkbox" checked={jadwalBaru.some(j => j.hari === hari && j.shift === shift)} onChange={() => toggleShift(hari, shift, false)} className="cursor-pointer accent-[#52796F]" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <button type="submit" disabled={isPending} className="w-full py-2.5 mt-2 text-sm rounded-lg text-white font-semibold bg-[#52796F] hover:bg-[#43645a] transition duration-200 disabled:opacity-50">
               {isPending ? 'Memproses...' : 'Simpan Karyawan'}
             </button>
@@ -173,9 +333,9 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
 
       {/* edit modal */}
       {editModal && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-sm overflow-hidden border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200">
-            <div className="p-4 md:p-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200 my-8">
+            <div className="p-4 md:p-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50 sticky top-0 z-10">
               <div><h3 className="font-bold text-zinc-900 dark:text-white">Ubah Data Staf</h3></div>
               <button onClick={() => setEditModal(null)} className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"><X size={20} /></button>
             </div>
@@ -194,6 +354,36 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
                   </div>
                 </div>
+
+                {/* shift table selector for edit */}
+                <div>
+                  <label className="block text-xs font-medium text-zinc-500 mb-2">Jadwal Shift (Senin - Jumat)</label>
+                  <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                    <table className="w-full text-xs text-center">
+                      <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700">
+                        <tr>
+                          <th className="py-2 px-2 font-medium text-zinc-500 text-left">Hari</th>
+                          <th className="py-2 px-2 font-medium text-zinc-500">Pagi</th>
+                          <th className="py-2 px-2 font-medium text-zinc-500">Siang</th>
+                          <th className="py-2 px-2 font-medium text-zinc-500">Sore</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                        {HARI_KERJA.map(hari => (
+                          <tr key={hari} className="bg-white dark:bg-zinc-950">
+                            <td className="py-1.5 px-2 font-medium text-zinc-700 dark:text-zinc-300 text-left">{hari}</td>
+                            {SHIFT_KERJA.map(shift => (
+                              <td key={shift} className="py-1.5 px-2">
+                                <input type="checkbox" checked={jadwalEdit.some(j => j.hari === hari && j.shift === shift)} onChange={() => toggleShift(hari, shift, true)} className="cursor-pointer accent-[#52796F]" />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
                 <button type="submit" disabled={isPending} className="w-full mt-2 py-2.5 text-sm rounded-lg text-white font-semibold bg-[#52796F] hover:bg-[#43645a] disabled:opacity-50">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
               </form>
             </div>
@@ -210,7 +400,7 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
               <button onClick={() => setDetailModal(null)} className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"><X size={20} /></button>
             </div>
             
-            <div className="p-4 md:p-5">
+            <div className="p-4 md:p-5 max-h-[80vh] overflow-y-auto custom-scrollbar">
               
               <div className="flex items-center gap-2 mb-3 text-[#52796F] font-semibold text-sm"><BarChart3 size={16} /><h4>Metrik Kehadiran</h4></div>
               
@@ -234,7 +424,39 @@ export default function KaryawanClient({ initialData, currentUser }: { initialDa
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mb-3 text-zinc-900 dark:text-white font-semibold text-sm"><Clock size={16} /><h4>Riwayat Sesi Log</h4></div>
+              {/* registered schedule - converted to table with hours */}
+              <div className="flex items-center gap-2 mb-3 text-zinc-900 dark:text-white font-semibold text-sm mt-6"><Calendar size={16} /><h4>Jadwal Tersimpan</h4></div>
+              
+              {(!detailModal.jadwalShift || detailModal.jadwalShift.length === 0) ? (
+                <p className="text-sm text-zinc-500 mb-6 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-lg py-4 text-center">Belum ada jadwal tersimpan.</p>
+              ) : (
+                <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden mb-6">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700 text-zinc-500">
+                      <tr>
+                        <th className="py-2 px-3 font-medium w-1/3">Hari</th>
+                        <th className="py-2 px-3 font-medium">Jam Kerja</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                      {HARI_KERJA.map(hari => {
+                        const shifts = detailModal.jadwalShift?.filter(j => j.hari === hari).map(j => j.shift) || [];
+                        if (shifts.length === 0) return null;
+                        return (
+                          <tr key={hari} className="bg-white dark:bg-zinc-950">
+                            <td className="py-2 px-3 font-medium text-zinc-700 dark:text-zinc-300">{hari}</td>
+                            <td className="py-2 px-3 text-zinc-600 dark:text-zinc-400 font-medium">
+                              {formatShiftHours(shifts)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 mb-3 text-zinc-900 dark:text-white font-semibold text-sm mt-6"><Clock size={16} /><h4>Riwayat Sesi Log</h4></div>
               
               {/* compact session list */}
               <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
