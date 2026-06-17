@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -43,12 +41,12 @@ model Transaksi {
   tanggalTransaksi DateTime         @default(now())
 
   // relation to customer
-  pelanggan        Pelanggan        @relation(fields: [nikPelanggan], references: [nik])
-  
+  pelanggan        Pelanggan        @relation(fields: [nikPelanggan], references: [nik], onDelete: Cascade)
+
   // relation to cashier (user) for performance tracking
   kasirId          String
-  kasir            User             @relation(fields: [kasirId], references: [id])
-  
+  kasir            User             @relation(fields: [kasirId], references: [id], onDelete: Cascade)
+
   // link to specific work session
   sesiId           String?
   sesi             SesiKerja?       @relation(fields: [sesiId], references: [id])
@@ -65,7 +63,7 @@ model User {
 
   // relation to transactions (performance count)
   transaksi Transaksi[]
-  
+
   // relation to work sessions (shift logs)
   sesiKerja SesiKerja[]
 }
@@ -74,7 +72,7 @@ model User {
 model SesiKerja {
   id           String      @id @default(cuid())
   kasirId      String
-  kasir        User        @relation(fields: [kasirId], references: [id])
+  kasir        User        @relation(fields: [kasirId], references: [id], onDelete: Cascade)
   waktuMulai   DateTime    @default(now())
   waktuSelesai DateTime?   // null means session is still active/abruptly closed
 
