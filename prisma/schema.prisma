@@ -66,6 +66,9 @@ model User {
 
   // relation to work sessions (shift logs)
   sesiKerja SesiKerja[]
+
+  // relation to scheduled shifts
+  jadwalShift JadwalShift[]
 }
 
 // cashier shift/session tracking
@@ -74,7 +77,19 @@ model SesiKerja {
   kasirId      String
   kasir        User        @relation(fields: [kasirId], references: [id], onDelete: Cascade)
   waktuMulai   DateTime    @default(now())
-  waktuSelesai DateTime?   // null means session is still active/abruptly closed
+  waktuSelesai DateTime?
+  // null means session is still active/abruptly closed
 
   transaksi    Transaksi[]
+}
+
+// employee work shifts
+model JadwalShift {
+  id      String   @id @default(cuid())
+  hari    String
+  shift   String
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hari, shift])
 }
