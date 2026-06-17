@@ -35,7 +35,7 @@ export async function loginUser(formData: FormData) {
     });
 
     const cookieStore = await cookies();
-    
+
     // set cookie without maxAge to make it a session cookie
     // this ensures logout happens automatically when browser is closed
     cookieStore.set('wardi_session', JSON.stringify({
@@ -65,7 +65,7 @@ export async function logoutUser() {
     // update work session end time if session exists
     if (sessionCookie) {
       const sessionData = JSON.parse(sessionCookie.value);
-      
+
       if (sessionData.sesiId) {
         await prisma.sesiKerja.update({
           where: { id: sessionData.sesiId },
