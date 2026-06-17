@@ -1,290 +1,371 @@
-"use client"
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, User, Package, CreditCard, Search, X, AlertCircle, Printer, CheckCircle, XCircle } from 'lucide-react';
+import { Search, User, CreditCard, Banknote, Minus, Plus, Receipt, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { searchPelanggan } from '@/app/actions/pelanggan';
 import { prosesTransaksiServer } from '@/app/actions/transaksi';
+import { MetodePembayaran } from '@prisma/client';
 import { toPng } from 'html-to-image';
-import Link from 'next/link';
+
+// define types
+type Pelanggan = {
+  nik: string;
+  nama: string;
+  kategori: string;
+};
 
 export default function KasirPage() {
-  const [query, setQuery] = useState("");
-  const [hints, setHints] = useState<any[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [jumlahTabung, setJumlahTabung] = useState<number>(1);
+  const [metodePembayaran, setMetodePembayaran] = useState<MetodePembayaran>(MetodePembayaran.TUNAI);
+  
+  // customer search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Pelanggan[]>([]);
+  const [selectedPelanggan, setSelectedPelanggan] = useState<Pelanggan | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  
-  // transaction & ui states
-  const [quantity, setQuantity] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState("TUNAI");
-  const [isProcessing, setIsProcessing] = useState(false);
-  
-  // custom modal state
-  const [modal, setModal] = useState<{show: boolean, type: 'success'|'error', message: string}>({
-    show: false, type: 'success', message: ''
-  });
-  
-  const receiptRef = useRef<HTMLDivElement>(null);
-  const HARGA_PER_TABUNG = 16000;
-  const totalHarga = quantity * HARGA_PER_TABUNG;
+  const searchRef = useRef<HTMLDivElement>(null);
+  const hiddenReceiptRef = useRef<HTMLDivElement>(null);
 
-  // debounce search for dropdown hints
+  // transaction feedback states
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const hargaPerTabung = 18000;
+  const totalHarga = jumlahTabung * hargaPerTabung;
+
+  // helper for custom toast notification
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  // debounced customer search (triggered at 1 character minimum)
   useEffect(() => {
-    const fetchHints = async () => {
-      if (query.length < 2) {
-        setHints([]);
-        return;
+    const timer = setTimeout(async () => {
+      if (searchQuery.trim().length >= 1) {
+        setIsSearching(true);
+        const results = await searchPelanggan(searchQuery);
+        setSearchResults(results);
+        setIsSearching(false);
+      } else {
+        setSearchResults([]);
       }
-      setIsSearching(true);
-      const results = await searchPelanggan(query);
-      setHints(results);
-      setIsSearching(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // close search dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setSearchResults([]);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCheckout = async () => {
+    if (!selectedPelanggan) {
+      showNotification('Silakan pilih pelanggan terlebih dahulu untuk memproses transaksi.', 'error');
+      return;
+    }
+
+    if (jumlahTabung < 1) {
+      showNotification('Jumlah tabung minimal adalah 1.', 'error');
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    const data = {
+      nikPelanggan: selectedPelanggan.nik,
+      jumlahTabung,
+      metodePembayaran,
     };
 
-    const timeoutId = setTimeout(fetchHints, 300);
-    return () => clearTimeout(timeoutId);
-  }, [query]);
-
-  // handle clearing the selected customer
-  const clearSelection = () => {
-    setSelectedCustomer(null);
-    setQuery("");
-    setHints([]);
-  };
-
-  // process transaction to db and export receipt
-  const handleProsesTransaksi = async () => {
-    if (!selectedCustomer || !receiptRef.current) return;
-    setIsProcessing(true);
-
-    try {
-      // 1. check limit & save to database first
-      const dbResult = await prosesTransaksiServer({
-        nikPelanggan: selectedCustomer.nik,
-        jumlahTabung: quantity,
-        metodePembayaran: paymentMethod
-      });
-
-      if (dbResult.error) {
-        setModal({ show: true, type: 'error', message: dbResult.error });
-        setIsProcessing(false);
-        return; // stop execution if limit reached
+    const res = await prosesTransaksiServer(data);
+    
+    if (res?.error) {
+      showNotification(res.error, 'error');
+    } else {
+      // generate and download receipt
+      if (hiddenReceiptRef.current) {
+        try {
+          const dataUrl = await toPng(hiddenReceiptRef.current, {
+            pixelRatio: 2,
+            backgroundColor: '#ffffff',
+          });
+          const link = document.createElement("a");
+          const timestamp = new Date().getTime();
+          link.download = `nota-${selectedPelanggan.nik}-${timestamp}.png`;
+          link.href = dataUrl;
+          link.click();
+        } catch (err) {
+          console.error("gagal mencetak nota:", err);
+        }
       }
 
-      // 2. generate & download receipt as png
-      const dataUrl = await toPng(receiptRef.current, {
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-      });
+      showNotification('Transaksi berhasil dicatat dan nota telah diunduh!', 'success');
       
-      const link = document.createElement("a");
-      const timestamp = new Date().getTime();
-      link.download = `nota-${selectedCustomer.nik}-${timestamp}.png`;
-      link.href = dataUrl;
-      link.click();
-
-      // 3. show success popup & reset form
-      setModal({ show: true, type: 'success', message: 'Transaksi berhasil disimpan dan nota telah diunduh!' });
-      clearSelection();
-      setQuantity(1);
-      setPaymentMethod("TUNAI");
-
-    } catch (error) {
-      console.error("gagal memproses:", error);
-      setModal({ show: true, type: 'error', message: 'Terjadi kesalahan saat mencetak nota.' });
-    } finally {
-      setIsProcessing(false);
+      // reset pos state for next customer
+      setSelectedPelanggan(null);
+      setSearchQuery('');
+      setJumlahTabung(1);
+      setMetodePembayaran(MetodePembayaran.TUNAI);
     }
-  };
-
-  const formatRupiah = (number: number) => {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(number);
+    
+    setIsProcessing(false);
   };
 
   const currentDate = new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
-    // prevent full page scroll, fix height
-    <div className="h-[calc(100vh-5rem)] flex flex-col space-y-6">
-      
-      {/* custom modal popup */}
-      {modal.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl shadow-2xl max-w-sm w-full border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200">
-            <div className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4 ${modal.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-              {modal.type === 'success' ? <CheckCircle size={32} /> : <XCircle size={32} />}
-            </div>
-            <h3 className="text-xl font-bold text-center text-zinc-900 dark:text-white mb-2">
-              {modal.type === 'success' ? 'Berhasil!' : 'Transaksi Ditolak'}
-            </h3>
-            <p className="text-center text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
-              {modal.message}
-            </p>
-            <button
-              onClick={() => setModal({ ...modal, show: false })}
-              className={`w-full py-3 rounded-xl font-bold text-white transition ${modal.type === 'success' ? 'bg-[#52796F] hover:bg-[#43645a]' : 'bg-red-600 hover:bg-red-700'}`}
-            >
-              Tutup
-            </button>
-          </div>
+    <div className="relative h-full flex flex-col">
+      {/* custom notification toast */}
+      {notification && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-900 dark:text-green-300' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-300'}`}>
+          {notification.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+          {notification.message}
         </div>
       )}
 
-      {/* header section (fixed) */}
-      <div className="flex-shrink-0">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Kasir Transaksi</h1>
-        <p className="text-zinc-500 dark:text-zinc-400 mt-1">Catat penjualan LPG 3kg harian.</p>
-      </div>
+      {/* header */}
+      <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Kasir Utama</h1>
 
-      {/* grid layout: scrollable form (left) & fixed receipt (right) */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-0">
+      {/* pos layout: split left (controls) and right (cart) */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         
-        {/* left column: main form (scrollable within column) */}
-        <div className="lg:col-span-8 h-full overflow-y-auto pr-2 pb-8 custom-scrollbar">
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <form className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* left column: inputs & products */}
+        <div className="flex-1 w-full space-y-6">
+          
+          {/* customer selection block */}
+          <div className="bg-white dark:bg-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+              <User size={18} className="text-[#52796F]" /> Identitas Pelanggan
+            </h2>
+            
+            {!selectedPelanggan ? (
+              <div className="relative" ref={searchRef}>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Ketik inisial atau NIK pelanggan..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition"
+                  />
+                </div>
                 
-                {/* customer autocomplete */}
-                <div className="space-y-2 relative md:col-span-2">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
-                    <User size={16} /> NIK / Nama Pelanggan
-                  </label>
-                  {selectedCustomer ? (
-                    <div className="flex items-center justify-between p-4 rounded-lg border border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-100">
-                      <div>
-                        <p className="font-bold text-lg">{selectedCustomer.nama}</p>
-                        <p className="text-sm opacity-80 font-mono mt-1">NIK: {selectedCustomer.nik}</p>
-                        <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                          {selectedCustomer.kategori}
-                        </span>
-                      </div>
-                      <button type="button" onClick={clearSelection} className="p-2 hover:bg-emerald-200 dark:hover:bg-emerald-500/20 rounded-full transition">
-                        <X size={20} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                        <Search size={18} className="text-zinc-400" />
-                      </div>
-                      <input 
-                        type="text" 
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Ketik nama atau NIK pelanggan..."
-                        className="w-full pl-12 pr-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-[#52796F] outline-none transition"
-                      />
-                      {query.length >= 2 && (
-                        <div className="absolute z-10 w-full mt-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                          {isSearching ? (
-                            <div className="p-4 text-sm text-zinc-500 text-center">Mencari...</div>
-                          ) : hints.length > 0 ? (
-                            hints.map((p) => (
-                              <button key={p.nik} type="button" onClick={() => setSelectedCustomer(p)} className="w-full text-left px-5 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition border-b border-zinc-100 dark:border-zinc-700/50 last:border-0 flex justify-between items-center">
-                                <div>
-                                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">{p.nama}</p>
-                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{p.nik}</p>
-                                </div>
-                                <span className="px-2 py-1 rounded text-[10px] font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">{p.kategori}</span>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="p-6 text-center">
-                              <AlertCircle className="mx-auto text-zinc-400 mb-3" size={32} />
-                              <p className="text-sm text-zinc-600 dark:text-zinc-400">Pelanggan tidak ditemukan.</p>
-                              <Link href="/pelanggan" className="text-[#52796F] hover:underline text-sm font-semibold mt-2 inline-block">+ Tambah Baru</Link>
+                {/* search dropdown */}
+                {searchQuery.length >= 1 && (
+                  <div className="absolute z-10 mt-2 w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl overflow-hidden">
+                    {isSearching ? (
+                      <div className="p-4 text-sm text-zinc-500 text-center">Mencari...</div>
+                    ) : searchResults.length > 0 ? (
+                      <ul className="max-h-60 overflow-y-auto">
+                        {searchResults.map((p) => (
+                          <li 
+                            key={p.nik} 
+                            onClick={() => { setSelectedPelanggan(p); setSearchQuery(''); setSearchResults([]); }}
+                            className="p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b border-zinc-100 dark:border-zinc-800/50 last:border-0 transition-colors"
+                          >
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="font-medium text-zinc-900 dark:text-white">{p.nama}</p>
+                                <p className="text-xs text-zinc-500 font-mono mt-0.5">{p.nik}</p>
+                              </div>
+                              <span className="text-[10px] uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded font-semibold text-zinc-600 dark:text-zinc-400">{p.kategori}</span>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* tube quantity */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
-                    <Package size={16} /> Jumlah Tabung
-                  </label>
-                  <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-[#52796F] outline-none text-lg font-semibold" />
-                </div>
-
-                {/* payment method */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
-                    <CreditCard size={16} /> Metode Pembayaran
-                  </label>
-                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-[#52796F] outline-none text-lg">
-                    <option value="TUNAI">Tunai</option>
-                    <option value="TRANSFER">Transfer</option>
-                  </select>
-                </div>
-
-                {/* total price */}
-                <div className="space-y-2 md:col-span-2 bg-zinc-50 dark:bg-zinc-950/50 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                  <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Pembayaran</label>
-                  <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">{formatRupiah(totalHarga)}</p>
-                </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="p-4 text-sm text-zinc-500 text-center">Pelanggan tidak ditemukan.</div>
+                    )}
+                  </div>
+                )}
               </div>
-
-              {/* submit action */}
-              <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800">
-                <button type="button" onClick={handleProsesTransaksi} disabled={!selectedCustomer || isProcessing} className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition text-lg shadow-sm ${selectedCustomer && !isProcessing ? "bg-[#52796F] hover:bg-[#43645a] text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"}`}>
-                  {isProcessing ? "Memproses..." : <><ShoppingCart size={20} /> Proses Transaksi & Cetak Nota</>}
+            ) : (
+              <div className="flex items-center justify-between p-4 rounded-lg bg-[#52796F]/10 border border-[#52796F]/20">
+                <div>
+                  <p className="font-semibold text-zinc-900 dark:text-white">{selectedPelanggan.nama}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-zinc-500 font-mono">{selectedPelanggan.nik}</p>
+                    <span className="text-[10px] uppercase tracking-wider bg-[#52796F]/20 text-[#52796F] px-2 py-0.5 rounded font-bold">{selectedPelanggan.kategori}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedPelanggan(null)} 
+                  className="text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-md transition-colors"
+                  title="Hapus Pilihan"
+                >
+                  <Trash2 size={18} />
                 </button>
               </div>
-            </form>
+            )}
           </div>
-        </div>
 
-        {/* right column: receipt preview (fixed) */}
-        <div className="lg:col-span-4 h-full hidden lg:flex flex-col">
-          <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-3 flex items-center gap-2 uppercase tracking-wider flex-shrink-0">
-            <Printer size={16} /> Pratinjau Struk
-          </h3>
-          
-          <div className="bg-zinc-200 dark:bg-zinc-800 p-4 rounded-xl flex-1 overflow-hidden flex items-start justify-center">
-            <div ref={receiptRef} className="bg-white text-black p-6 w-full max-w-[320px] shadow-sm font-mono text-sm leading-relaxed shrink-0">
-              {/* receipt header */}
-              <div className="text-center mb-6">
-                <h2 className="font-bold text-lg uppercase tracking-widest">WardiPOS</h2>
-                <p className="text-xs">Pangkalan Wardi Sukardi</p>
-                <p className="text-xs mt-1">{currentDate}</p>
-                <div className="border-b-2 border-dashed border-gray-400 mt-4 mb-1"></div>
+          {/* product selection block */}
+          <div className="bg-white dark:bg-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white mb-4">Pilih Produk</h2>
+            
+            <div className="flex items-center justify-between p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50 dark:bg-zinc-900/30">
+              <div>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Gas LPG 3 Kg</h3>
+                <p className="text-sm text-zinc-500">Tabung Melon Bersubsidi</p>
+                <p className="font-semibold text-[#52796F] mt-1">Rp {hargaPerTabung.toLocaleString('id-ID')}</p>
               </div>
-
-              {/* details */}
-              <div className="mb-4 space-y-1">
-                <div className="flex justify-between"><span className="text-gray-600">Pelanggan:</span><span className="font-semibold text-right max-w-[140px] truncate">{selectedCustomer ? selectedCustomer.nama : "-"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">NIK:</span><span className="text-right">{selectedCustomer ? selectedCustomer.nik.substring(0, 8) + "********" : "-"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Kategori:</span><span className="text-right">{selectedCustomer ? selectedCustomer.kategori : "-"}</span></div>
-              </div>
-              <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
-
-              {/* items */}
-              <div className="mb-4">
-                <div className="flex justify-between font-bold mb-2"><span>Item</span><span>Subtotal</span></div>
-                <div className="flex justify-between items-start">
-                  <div><p>LPG 3Kg Melon</p><p className="text-xs text-gray-600">{quantity} x Rp16.000</p></div>
-                  <div className="font-semibold">{formatRupiah(totalHarga)}</div>
+              
+              {/* quantity adjuster */}
+              <div className="flex items-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden shadow-sm">
+                <button 
+                  onClick={() => setJumlahTabung(Math.max(1, jumlahTabung - 1))}
+                  className="p-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors"
+                >
+                  <Minus size={16} />
+                </button>
+                <div className="w-12 text-center font-bold text-zinc-900 dark:text-white">
+                  {jumlahTabung}
                 </div>
-              </div>
-              <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
-
-              {/* total */}
-              <div className="space-y-1 font-bold text-base mb-6">
-                <div className="flex justify-between"><span>TOTAL:</span><span>{formatRupiah(totalHarga)}</span></div>
-                <div className="flex justify-between text-sm font-normal mt-2"><span className="text-gray-600">Metode:</span><span>{paymentMethod}</span></div>
-              </div>
-
-              <div className="text-center text-xs text-gray-500 mt-8">
-                <p>Terima kasih atas pembelian Anda!</p>
-                <p>Simpan struk ini sebagai bukti.</p>
+                <button 
+                  onClick={() => setJumlahTabung(jumlahTabung + 1)}
+                  className="p-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
               </div>
             </div>
           </div>
+
+          {/* payment method block */}
+          <div className="bg-white dark:bg-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white mb-4">Metode Pembayaran</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setMetodePembayaran(MetodePembayaran.TUNAI)}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${metodePembayaran === MetodePembayaran.TUNAI ? 'border-[#52796F] bg-[#52796F]/5' : 'border-zinc-200 dark:border-zinc-800 hover:border-[#52796F]/50'}`}
+              >
+                <Banknote size={24} className={`mb-2 ${metodePembayaran === MetodePembayaran.TUNAI ? 'text-[#52796F]' : 'text-zinc-400'}`} />
+                <span className={`font-semibold text-sm ${metodePembayaran === MetodePembayaran.TUNAI ? 'text-[#52796F]' : 'text-zinc-600 dark:text-zinc-400'}`}>Uang Tunai</span>
+              </button>
+
+              <button
+                onClick={() => setMetodePembayaran(MetodePembayaran.TRANSFER)}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${metodePembayaran === MetodePembayaran.TRANSFER ? 'border-[#52796F] bg-[#52796F]/5' : 'border-zinc-200 dark:border-zinc-800 hover:border-[#52796F]/50'}`}
+              >
+                <CreditCard size={24} className={`mb-2 ${metodePembayaran === MetodePembayaran.TRANSFER ? 'text-[#52796F]' : 'text-zinc-400'}`} />
+                <span className={`font-semibold text-sm ${metodePembayaran === MetodePembayaran.TRANSFER ? 'text-[#52796F]' : 'text-zinc-600 dark:text-zinc-400'}`}>Transfer Bank</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        {/* right column: pos receipt/cart panel */}
+        <div className="w-full lg:w-[400px] bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col h-fit lg:sticky lg:top-8 overflow-hidden">
+          
+          {/* cart header */}
+          <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
+             <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+               <Receipt size={18} className="text-[#52796F]" /> Keranjang Kasir
+             </h2>
+             <button 
+               onClick={() => {setJumlahTabung(1); setSelectedPelanggan(null);}} 
+               className="text-xs text-zinc-500 hover:text-red-500 font-medium transition-colors"
+             >
+               Bersihkan
+             </button>
+          </div>
+          
+          {/* cart items */}
+          <div className="p-5 flex-1 min-h-[200px]">
+             <div className="flex justify-between items-start">
+                <div className="flex gap-4">
+                   <div className="w-6 h-6 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-[#52796F] text-xs">
+                     {jumlahTabung}
+                   </div>
+                   <div>
+                      <p className="font-semibold text-zinc-900 dark:text-white">LPG 3 Kg</p>
+                      {selectedPelanggan ? (
+                        <p className="text-xs text-zinc-500 mt-1">{selectedPelanggan.nama} ({selectedPelanggan.kategori})</p>
+                      ) : (
+                        <p className="text-xs text-red-400 mt-1 italic">Pelanggan belum dipilih</p>
+                      )}
+                   </div>
+                </div>
+                <span className="font-semibold text-zinc-900 dark:text-white">
+                  Rp {totalHarga.toLocaleString('id-ID')}
+                </span>
+             </div>
+          </div>
+          
+          {/* cart footer & checkout */}
+          <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+             <div className="p-5 pb-4 space-y-2 text-sm">
+                <div className="flex justify-between text-zinc-500">
+                  <span>Subtotal</span>
+                  <span>Rp {totalHarga.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between text-zinc-500">
+                  <span>Metode</span>
+                  <span>{metodePembayaran === 'TUNAI' ? 'Tunai' : 'Transfer'}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 mt-2 border-t border-zinc-200 dark:border-zinc-700/50">
+                  <span className="font-semibold text-zinc-900 dark:text-white">Total Tagihan</span>
+                  <span className="font-bold text-xl text-[#52796F]">Rp {totalHarga.toLocaleString('id-ID')}</span>
+                </div>
+             </div>
+             
+             {/* big pay button */}
+             <button 
+               onClick={handleCheckout} 
+               disabled={isProcessing || !selectedPelanggan || jumlahTabung < 1}
+               className="w-full py-5 bg-[#52796F] hover:bg-[#43645a] text-white font-bold text-lg flex justify-between items-center px-6 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+             >
+               <span>{isProcessing ? 'Memproses...' : 'Bayar Sekarang'}</span>
+               <span>Rp {totalHarga.toLocaleString('id-ID')}</span>
+             </button>
+          </div>
+
         </div>
       </div>
+
+      {/* off-screen receipt for image generation (fixes 0 byte download issue) */}
+      <div className="absolute left-[-9999px] top-[-9999px]">
+        <div ref={hiddenReceiptRef} className="bg-white text-black p-6 w-[320px] font-mono text-sm leading-relaxed">
+          <div className="text-center mb-6">
+            <h2 className="font-bold text-lg uppercase tracking-widest">WardiPOS</h2>
+            <p className="text-xs">Pangkalan Wardi Sukardi</p>
+            <p className="text-xs mt-1">{currentDate}</p>
+            <div className="border-b-2 border-dashed border-gray-400 mt-4 mb-1"></div>
+          </div>
+          <div className="mb-4 space-y-1">
+            <div className="flex justify-between"><span className="text-gray-600">Pelanggan:</span><span className="font-semibold text-right max-w-[140px] truncate">{selectedPelanggan ? selectedPelanggan.nama : "-"}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">NIK:</span><span className="text-right">{selectedPelanggan ? selectedPelanggan.nik.substring(0, 8) + "********" : "-"}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Kategori:</span><span className="text-right">{selectedPelanggan ? selectedPelanggan.kategori : "-"}</span></div>
+          </div>
+          <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
+          <div className="mb-4">
+            <div className="flex justify-between font-bold mb-2"><span>Item</span><span>Subtotal</span></div>
+            <div className="flex justify-between items-start">
+              <div><p>LPG 3Kg Melon</p><p className="text-xs text-gray-600">{jumlahTabung} x Rp{hargaPerTabung.toLocaleString('id-ID')}</p></div>
+              <div className="font-semibold">Rp {totalHarga.toLocaleString('id-ID')}</div>
+            </div>
+          </div>
+          <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
+          <div className="space-y-1 font-bold text-base mb-6">
+            <div className="flex justify-between"><span>TOTAL:</span><span>Rp {totalHarga.toLocaleString('id-ID')}</span></div>
+            <div className="flex justify-between text-sm font-normal mt-2"><span className="text-gray-600">Metode:</span><span>{metodePembayaran === 'TUNAI' ? 'Tunai' : 'Transfer'}</span></div>
+          </div>
+          <div className="text-center text-xs text-gray-500 mt-8">
+            <p>Terima kasih atas pembelian Anda!</p>
+            <p>Simpan struk ini sebagai bukti.</p>
+          </div>
+        </div>
+      </div>
+      
     </div>
   );
 }
