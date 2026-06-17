@@ -94,7 +94,8 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 relative">
+    // PERUBAHAN: flex-col-reverse digunakan di sini agar Form di mobile naik ke atas
+    <div className="flex flex-col-reverse lg:flex-row gap-8 relative">
       {notification && (
         <div className={`fixed top-20 md:top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium w-[90%] md:w-auto transition-all ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-900 dark:text-green-300' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-300'}`}>
           {notification.type === 'success' ? <CheckCircle size={18} className="shrink-0" /> : <AlertTriangle size={18} className="shrink-0" />}
@@ -102,6 +103,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
         </div>
       )}
 
+      {/* Bagian Kiri (Tabel) */}
       <div className="flex-1 space-y-4">
         <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
           <div className="flex-1 relative w-full">
@@ -137,9 +139,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
                     <tr key={p.nik} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap font-mono text-xs">{p.nik}</td>
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-zinc-900 dark:text-zinc-100">{p.nama}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-[10px] uppercase tracking-wider rounded-md font-semibold ${getCategoryColor(p.kategori)}`}>{p.kategori}</span>
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap"><span className={`px-2 py-1 text-[10px] uppercase tracking-wider rounded-md font-semibold ${getCategoryColor(p.kategori)}`}>{p.kategori}</span></td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center justify-center gap-3">
                           <button onClick={() => openDetail(p)} className="text-zinc-400 hover:text-[#52796F] p-1"><Eye size={18} /></button>
@@ -156,6 +156,7 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
         </div>
       </div>
 
+      {/* Bagian Kanan (Formulir) */}
       <div className="w-full lg:w-80">
         <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm lg:sticky lg:top-8">
           <div className="flex items-center gap-2 mb-6 text-zinc-900 dark:text-white font-semibold">
@@ -174,13 +175,14 @@ export function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
               </div>
             </div>
-            <button type="submit" disabled={isPending} className="w-full py-2.5 mt-2 text-sm rounded-lg text-white font-semibold bg-[#52796F] hover:bg-[#43645a] disabled:opacity-50">
+            <button type="submit" disabled={isPending} className="w-full py-2.5 mt-2 text-sm rounded-lg text-white font-semibold bg-[#52796F] hover:bg-[#43645a] disabled:opacity-50 transition-colors">
               {isPending ? 'Menyimpan...' : 'Simpan Data'}
             </button>
           </form>
         </div>
       </div>
 
+      {/* Popups... */}
       {confirmDelete && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-sm w-full p-6 text-center shadow-xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200">

@@ -92,7 +92,6 @@ export default function KasirPage() {
 
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Kasir Utama</h1>
 
-      {/* pb-36 ditambahkan di mobile agar konten tidak tertutup oleh bar checkout melayang */}
       <div className="flex flex-col lg:flex-row gap-6 items-start pb-36 lg:pb-0">
         
         {/* Kolom Kiri: Input */}
@@ -164,43 +163,50 @@ export default function KasirPage() {
           </div>
         </div>
 
-        {/* Kolom Kanan: Keranjang (Floating Bottom khusus di Mobile) */}
+        {/* Kolom Kanan: Keranjang (Menyatu di Desktop, Terpisah Floating di Mobile) */}
         <div className="w-full lg:w-[400px] lg:sticky lg:top-8 z-30">
-          <div className="hidden lg:flex flex-col bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden mb-4">
-            <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
-              <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Receipt size={18} className="text-[#52796F]" /> Keranjang</h2>
-              <button onClick={() => {setJumlahTabung(1); setSelectedPelanggan(null);}} className="text-xs text-zinc-500 hover:text-red-500 font-medium">Bersihkan</button>
-            </div>
-            <div className="p-5 flex-1">
-              <div className="flex justify-between items-start">
-                <div className="flex gap-4">
-                  <div className="w-6 h-6 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-[#52796F] text-xs">{jumlahTabung}</div>
-                  <div><p className="font-semibold text-zinc-900 dark:text-white">LPG 3 Kg</p><p className="text-xs text-zinc-500 mt-1">{selectedPelanggan ? selectedPelanggan.nama : <span className="text-red-400 italic">Belum dipilih</span>}</p></div>
+          
+          <div className="lg:bg-white lg:dark:bg-zinc-950 lg:rounded-xl lg:shadow-sm lg:border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col h-fit">
+            
+            {/* Header & Items (Hanya Desktop) */}
+            <div className="hidden lg:block bg-white dark:bg-zinc-950">
+              <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
+                <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Receipt size={18} className="text-[#52796F]" /> Keranjang Kasir</h2>
+                <button onClick={() => {setJumlahTabung(1); setSelectedPelanggan(null);}} className="text-xs text-zinc-500 hover:text-red-500 font-medium">Bersihkan</button>
+              </div>
+              <div className="p-5 flex-1 min-h-[200px]">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-4">
+                    <div className="w-6 h-6 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-[#52796F] text-xs">{jumlahTabung}</div>
+                    <div><p className="font-semibold text-zinc-900 dark:text-white">LPG 3 Kg</p><p className="text-xs text-zinc-500 mt-1">{selectedPelanggan ? selectedPelanggan.nama : <span className="text-red-400 italic">Belum dipilih</span>}</p></div>
+                  </div>
+                  <span className="font-semibold text-zinc-900 dark:text-white">Rp {totalHarga.toLocaleString('id-ID')}</span>
                 </div>
-                <span className="font-semibold text-zinc-900 dark:text-white">Rp {totalHarga.toLocaleString('id-ID')}</span>
               </div>
             </div>
-          </div>
 
-          {/* Kotak Checkout - Di Mobile menjadi Sticky Floating Bar */}
-          <div className="fixed bottom-0 left-0 right-0 lg:static border-t lg:border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.3)] lg:shadow-sm lg:rounded-xl z-40 p-4 lg:p-0">
-            <div className="max-w-7xl mx-auto flex flex-col">
-              <div className="lg:p-5 lg:pb-4 space-y-1 lg:space-y-2 text-sm mb-3 lg:mb-0">
+            {/* Kotak Checkout - Di Mobile Sticky Floating Bar, Di Desktop Menyatu */}
+            <div className="fixed bottom-0 left-0 right-0 lg:static border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 lg:bg-zinc-50 lg:dark:bg-zinc-900/50 shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.3)] lg:shadow-none z-40">
+              <div className="p-4 lg:p-5 lg:pb-4 space-y-1 lg:space-y-2 text-sm mb-2 lg:mb-0">
                 <div className="flex justify-between text-zinc-500 lg:mb-2"><span>Metode</span><span className="font-medium text-zinc-700 dark:text-zinc-300">{metodePembayaran}</span></div>
                 <div className="flex justify-between items-center lg:pt-2 lg:mt-2 lg:border-t border-zinc-200 dark:border-zinc-700/50">
                   <span className="font-semibold text-zinc-900 dark:text-white">Total Tagihan</span>
                   <span className="font-bold text-xl md:text-2xl text-[#52796F]">Rp {totalHarga.toLocaleString('id-ID')}</span>
                 </div>
               </div>
-              <button onClick={handleCheckout} disabled={isProcessing || !selectedPelanggan || jumlahTabung < 1} className="w-full py-4 lg:py-5 lg:rounded-b-xl lg:rounded-t-none rounded-xl bg-[#52796F] hover:bg-[#43645a] text-white font-bold text-lg flex justify-between items-center px-6 transition-colors disabled:opacity-50">
-                <span>{isProcessing ? 'Memproses...' : 'Bayar Sekarang'}</span>
-              </button>
+              <div className="px-4 pb-4 lg:p-0">
+                <button onClick={handleCheckout} disabled={isProcessing || !selectedPelanggan || jumlahTabung < 1} className="w-full py-4 lg:py-5 rounded-xl lg:rounded-none bg-[#52796F] hover:bg-[#43645a] text-white font-bold text-lg flex justify-center items-center transition-colors disabled:opacity-50">
+                  {isProcessing ? 'Memproses...' : 'Bayar Sekarang'}
+                </button>
+              </div>
             </div>
+
           </div>
 
         </div>
       </div>
 
+      {/* Area Nota Tersembunyi */}
       <div className="absolute left-[-9999px] top-[-9999px]">
         <div ref={hiddenReceiptRef} className="bg-white text-black p-6 w-[320px] font-mono text-sm leading-relaxed">
           <div className="text-center mb-6"><h2 className="font-bold text-lg uppercase tracking-widest">WardiPOS</h2><p className="text-xs">Pangkalan Wardi Sukardi</p><p className="text-xs mt-1">{currentDate}</p><div className="border-b-2 border-dashed border-gray-400 mt-4 mb-1"></div></div>
