@@ -52,6 +52,6 @@ export async function deleteEmployee(id: string) {
     revalidatePath('/karyawan');
     return { success: true };
   } catch (error) {
-    return { error: 'Terjadi kesalahan saat menghapus data karyawan. Pastikan karyawan ini tidak memiliki riwayat transaksi aktif.' };
+    return { error: 'Terjadi kesalahan sistem saat menghapus data karyawan.' };
   }
 }

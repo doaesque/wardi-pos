@@ -91,8 +91,10 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
     }
     // --- end of purchase limit logic ---
 
+    // calculate dynamic price: pengecer/um = 19000, rt = 20000
+    const hargaPerTabung = pelanggan.kategori === 'RT' ? 20000 : 19000;
     // fallback calculation if frontend omits totalHarga
-    const finalTotalHarga = data.totalHarga ? data.totalHarga : (data.jumlahTabung * 18000);
+    const finalTotalHarga = data.totalHarga ? data.totalHarga : (data.jumlahTabung * hargaPerTabung);
 
     // create the transaction record in database
     await prisma.transaksi.create({
