@@ -10,8 +10,25 @@ type DataTransaksi = {
   nikPelanggan: string;
   jumlahTabung: number;
   totalHarga?: number; 
-  metodePembayaran: MetodePembayaran;
+  metodePembayaran: MetodePembayaran | string;
 };
+
+// fetch transaction history
+export async function fetchRiwayatTransaksi() {
+  try {
+    const data = await prisma.transaksi.findMany({
+      orderBy: { tanggalTransaksi: 'desc' },
+      include: {
+        pelanggan: { select: { nama: true, kategori: true } },
+        kasir: { select: { nama: true } }
+      }
+    });
+    return data;
+  } catch (error) {
+    console.error('error fetching transactions:', error);
+    return [];
+  }
+}
 
 export async function prosesTransaksiServer(data: DataTransaksi) {
   try {
@@ -93,8 +110,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
 
     // calculate dynamic price: pengecer/um = 19000, rt = 20000
     const hargaPerTabung = pelanggan.kategori === 'RT' ? 20000 : 19000;
-    // fallback calculation if frontend omits totalHarga
-    const finalTotalHarga = data.totalHarga ? data.totalHarga : (data.jumlahTabung * hargaPerTabung);
+    const finalTotalHarga = data.jumlahTabung * hargaPerTabung;
 
     // create the transaction record in database
     await prisma.transaksi.create({
@@ -102,7 +118,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
         nikPelanggan: data.nikPelanggan,
         jumlahTabung: data.jumlahTabung,
         totalHarga: finalTotalHarga,
-        metodePembayaran: data.metodePembayaran,
+        metodePembayaran: data.metodePembayaran as MetodePembayaran,
         kasirId: sessionData.id,
         sesiId: sessionData.sesiId || null,
       },
