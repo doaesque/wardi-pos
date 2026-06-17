@@ -1,5 +1,5 @@
 import prisma from '@/app/lib/prisma';
-import { PelangganClient } from './PelangganClient';
+import PelangganClient from './PelangganClient';
 
 export default async function PelangganPage() {
   // fetch all customers ordered by newest
