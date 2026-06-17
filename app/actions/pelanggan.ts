@@ -49,7 +49,7 @@ export async function deleteCustomer(nik: string) {
     revalidatePath('/pelanggan');
     return { success: true };
   } catch (error) {
-    return { error: 'Data pelanggan gagal dihapus. Pastikan pelanggan ini tidak terikat dengan riwayat transaksi aktif.' };
+    return { error: 'Data pelanggan gagal dihapus karena terjadi kesalahan sistem.' };
   }
 }
 
