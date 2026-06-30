@@ -5,21 +5,8 @@ import KaryawanClient from './KaryawanClient';
 const currentUserMock = { id: 'dummy-admin-id' };
 
 export default async function KaryawanPage() {
+  // get all users without relations
   const karyawanList = await prisma.user.findMany({
-    include: {
-      _count: {
-        select: { transaksi: true }
-      },
-      sesiKerja: {
-        include: {
-          _count: { select: { transaksi: true } }
-        },
-        orderBy: { waktuMulai: 'desc' },
-        take: 5
-      },
-      // this line ensures jadwal data is retrieved and passed to the client
-      jadwalShift: true
-    },
     orderBy: { createdAt: 'desc' }
   });
 
