@@ -7,7 +7,14 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // define types
-type Transaksi = { id: string; tanggalTransaksi: Date; jumlahTabung: number; totalHarga: number; metodePembayaran: string; pelanggan: { nama: string; kategori: string } | null; kasir: { nama: string } | null; };
+type Transaksi = { 
+  id: string; 
+  tanggalTransaksi: Date; 
+  jumlahTabung: number; 
+  totalHarga: number; 
+  metodePembayaran: string; 
+  pelanggan: { nama: string; kategori: string } | null; 
+};
 
 export function TransaksiClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState('');
@@ -27,7 +34,7 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     return initialData.filter((trx: Transaksi) => {
       const trxDate = new Date(trx.tanggalTransaksi);
       const searchLower = search.toLowerCase();
-      const matchSearch = trx.id.toLowerCase().includes(searchLower) || (trx.pelanggan?.nama || 'umum').toLowerCase().includes(searchLower) || (trx.kasir?.nama || '').toLowerCase().includes(searchLower);
+      const matchSearch = trx.id.toLowerCase().includes(searchLower) || (trx.pelanggan?.nama || 'umum').toLowerCase().includes(searchLower);
 
       if (!matchSearch) return false;
       if (filterMode === 'semua') return true;
@@ -37,13 +44,11 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     });
   }, [initialData, search, filterMode, filterBulan, filterTahun, filterTanggalSpesifik]);
 
-  // calculate dynamic stats based on filtered data
   const totalTabungFiltered = filteredData.reduce((acc, trx) => acc + trx.jumlahTabung, 0);
   const totalUangFiltered = filteredData.reduce((acc, trx) => acc + trx.totalHarga, 0);
 
-  // function to generate and download csv
   const handleExportCSV = () => {
-    const headers = ['ID Transaksi', 'Tanggal', 'Waktu', 'Nama Pelanggan', 'Kategori', 'Nama Kasir', 'Metode Pembayaran', 'Jumlah Tabung', 'Total Harga'];
+    const headers = ['ID Transaksi', 'Tanggal', 'Waktu', 'Nama Pelanggan', 'Kategori', 'Metode Pembayaran', 'Jumlah Tabung', 'Total Harga'];
     
     const rows = filteredData.map(trx => {
       const date = new Date(trx.tanggalTransaksi);
@@ -53,7 +58,6 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
         date.toLocaleTimeString('id-ID'),
         `"${trx.pelanggan?.nama || 'Umum'}"`,
         trx.pelanggan?.kategori || '-',
-        `"${trx.kasir?.nama || '-'}"`,
         trx.metodePembayaran,
         trx.jumlahTabung,
         trx.totalHarga
@@ -73,9 +77,8 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     setExportDropdown(false);
   };
 
-  // function to generate and download real xlsx
   const handleExportXLSX = () => {
-    const headers = ['ID Transaksi', 'Tanggal', 'Waktu', 'Nama Pelanggan', 'Kategori', 'Nama Kasir', 'Metode Pembayaran', 'Jumlah Tabung', 'Total Harga'];
+    const headers = ['ID Transaksi', 'Tanggal', 'Waktu', 'Nama Pelanggan', 'Kategori', 'Metode Pembayaran', 'Jumlah Tabung', 'Total Harga'];
     
     const rows = filteredData.map(trx => {
       const date = new Date(trx.tanggalTransaksi);
@@ -85,7 +88,6 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
         date.toLocaleTimeString('id-ID'),
         trx.pelanggan?.nama || 'Umum',
         trx.pelanggan?.kategori || '-',
-        trx.kasir?.nama || '-',
         trx.metodePembayaran,
         trx.jumlahTabung,
         trx.totalHarga
@@ -99,34 +101,30 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     setExportDropdown(false);
   };
 
-  // function to generate clean pdf using jspdf and autotable
   const handleExportPDF = () => {
     const doc = new jsPDF();
     
-    // add title
     doc.setFontSize(14);
     doc.text('Riwayat Transaksi WardiPOS', 14, 15);
     doc.setFontSize(10);
     doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 22);
 
-    // generate table
     autoTable(doc, {
       startY: 28,
-      head: [['ID Transaksi', 'Waktu', 'Pelanggan', 'Kasir', 'Metode', 'Jumlah', 'Total (Rp)']],
+      head: [['ID Transaksi', 'Waktu', 'Pelanggan', 'Metode', 'Jumlah', 'Total (Rp)']],
       body: filteredData.map(trx => {
         const date = new Date(trx.tanggalTransaksi);
         return [
           trx.id.slice(-8).toUpperCase(),
           `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
           trx.pelanggan?.nama || 'Umum',
-          trx.kasir?.nama || '-',
           trx.metodePembayaran,
           `${trx.jumlahTabung} Tbg`,
           trx.totalHarga.toLocaleString('id-ID')
         ];
       }),
       theme: 'grid',
-      headStyles: { fillColor: [82, 121, 111] }, // matching the app's primary color
+      headStyles: { fillColor: [82, 121, 111] },
       styles: { fontSize: 8 }
     });
 
@@ -137,7 +135,6 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
   return (
     <div className="space-y-4">
       
-      {/* dynamic stats container */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
           <p className="text-sm text-zinc-500 font-medium mb-1">Total Tabung</p>
@@ -152,7 +149,7 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
       <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row items-center gap-3">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-          <input type="text" placeholder="Ketik ID, nama pelanggan, atau nama kasir..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition-colors" />
+          <input type="text" placeholder="Ketik ID atau nama pelanggan..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-sm outline-none focus:border-[#52796F] transition-colors" />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
@@ -220,14 +217,13 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
                 <th className="px-6 py-4 whitespace-nowrap">ID Transaksi</th>
                 <th className="px-6 py-4 whitespace-nowrap">Waktu</th>
                 <th className="px-6 py-4 whitespace-nowrap">Pelanggan</th>
-                <th className="px-6 py-4 whitespace-nowrap">Kasir</th>
                 <th className="px-6 py-4 whitespace-nowrap">Jumlah</th>
                 <th className="px-6 py-4 whitespace-nowrap">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {filteredData.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-zinc-500">Data tidak ditemukan.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Data tidak ditemukan.</td></tr>
               ) : (
                 filteredData.map((trx) => (
                   <tr key={trx.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
@@ -239,7 +235,6 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">{trx.pelanggan?.nama || 'Umum'}</span> 
                       <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 ml-1.5 rounded uppercase font-semibold tracking-wide border border-zinc-200 dark:border-zinc-700/50">{trx.pelanggan?.kategori || 'NON'}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-zinc-500">{trx.kasir?.nama || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium">{trx.jumlahTabung} Tabung</td>
                     <td className="px-6 py-4 whitespace-nowrap font-semibold text-[#52796F]">Rp {trx.totalHarga.toLocaleString('id-ID')}</td>
                   </tr>
