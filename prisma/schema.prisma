@@ -19,37 +19,44 @@ enum MetodePembayaran {
   TRANSFER
 }
 
-// customer master data
-model Pelanggan {
-  nik       String            @id // primary key
-  nama      String
-  kategori  KategoriPelanggan
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+// product data
+model Produk {
+  idProduk   String      @id @default(cuid()) // primary key
+  namaProduk String
+  harga      Int
 
   // relation to transactions
-  transaksi Transaksi[]
+  transaksi  Transaksi[]
+}
+
+// customer master data
+model Pelanggan {
+  idPelanggan String            @id @default(cuid()) // primary key
+  nik         String            @unique
+  nama        String
+  kategori    KategoriPelanggan
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // relation to transactions
+  transaksi   Transaksi[]
 }
 
 // transaction history
 model Transaksi {
   id               String           @id @default(cuid()) // unique id
-  nikPelanggan     String
+  idPelanggan      String
+  idProduk         String
   jumlahTabung     Int
   totalHarga       Int
   metodePembayaran MetodePembayaran
   tanggalTransaksi DateTime         @default(now())
 
   // relation to customer
-  pelanggan        Pelanggan        @relation(fields: [nikPelanggan], references: [nik], onDelete: Cascade)
+  pelanggan        Pelanggan        @relation(fields: [idPelanggan], references: [idPelanggan], onDelete: Cascade)
 
-  // relation to cashier (user) for performance tracking
-  kasirId          String
-  kasir            User             @relation(fields: [kasirId], references: [id], onDelete: Cascade)
-
-  // link to specific work session
-  sesiId           String?
-  sesi             SesiKerja?       @relation(fields: [sesiId], references: [id])
+  // relation to product
+  produk           Produk           @relation(fields: [idProduk], references: [idProduk], onDelete: Cascade)
 }
 
 // admin/cashier users
@@ -60,36 +67,4 @@ model User {
   nama      String
   role      String   @default("KASIR") // kasir or admin
   createdAt DateTime @default(now())
-
-  // relation to transactions (performance count)
-  transaksi Transaksi[]
-
-  // relation to work sessions (shift logs)
-  sesiKerja SesiKerja[]
-
-  // relation to scheduled shifts
-  jadwalShift JadwalShift[]
-}
-
-// cashier shift/session tracking
-model SesiKerja {
-  id           String      @id @default(cuid())
-  kasirId      String
-  kasir        User        @relation(fields: [kasirId], references: [id], onDelete: Cascade)
-  waktuMulai   DateTime    @default(now())
-  waktuSelesai DateTime?
-  // null means session is still active/abruptly closed
-
-  transaksi    Transaksi[]
-}
-
-// employee work shifts
-model JadwalShift {
-  id      String   @id @default(cuid())
-  hari    String
-  shift   String
-  userId  String
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, hari, shift])
 }
