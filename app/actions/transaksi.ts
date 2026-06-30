@@ -1,11 +1,9 @@
 'use server';
 
 import prisma from '@/app/lib/prisma';
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { MetodePembayaran } from '@prisma/client';
+import { MetodePembayaran, KategoriPelanggan } from '@prisma/client';
 
-// define types for incoming transaction data
 type DataTransaksi = {
   nikPelanggan: string;
   jumlahTabung: number;
@@ -13,14 +11,12 @@ type DataTransaksi = {
   metodePembayaran: MetodePembayaran | string;
 };
 
-// fetch transaction history
 export async function fetchRiwayatTransaksi() {
   try {
     const data = await prisma.transaksi.findMany({
       orderBy: { tanggalTransaksi: 'desc' },
       include: {
-        pelanggan: { select: { nama: true, kategori: true } },
-        kasir: { select: { nama: true } }
+        pelanggan: { select: { nama: true, kategori: true } }
       }
     });
     return data;
@@ -32,20 +28,6 @@ export async function fetchRiwayatTransaksi() {
 
 export async function prosesTransaksiServer(data: DataTransaksi) {
   try {
-    // get active user from cookies
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('wardi_session');
-
-    if (!sessionCookie) {
-      return { error: 'Sesi Anda telah berakhir. Silakan masuk kembali ke dalam sistem.' };
-    }
-
-    const sessionData = JSON.parse(sessionCookie.value);
-    
-    if (!sessionData.id) {
-      return { error: 'Data identitas pengguna tidak ditemukan. Silakan masuk ulang ke dalam sistem.' };
-    }
-
     // validate required fields
     if (!data.nikPelanggan || !data.jumlahTabung || data.jumlahTabung <= 0) {
       return { error: 'Data transaksi tidak lengkap atau jumlah tabung tidak valid.' };
@@ -60,19 +42,26 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
       return { error: 'Pelanggan dengan NIK tersebut tidak ditemukan di basis data. Silakan daftarkan pelanggan terlebih dahulu.' };
     }
 
-    // --- purchase limit logic ---
+    // ensure product exists for relation
+    let produk = await prisma.produk.findFirst();
+    if (!produk) {
+      // auto-create if product is missing
+      produk = await prisma.produk.create({
+        data: { namaProduk: 'LPG 3 Kg', harga: 20000 }
+      });
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     let usedQuota = 0;
 
-    if (pelanggan.kategori === 'RT' || pelanggan.kategori === 'UM') {
-      // daily limits: rt(1) and um(2)
-      const maxQuota = pelanggan.kategori === 'RT' ? 1 : 2;
+    // --- purchase limit logic ---
+    if (pelanggan.kategori === KategoriPelanggan.RT || pelanggan.kategori === KategoriPelanggan.UM) {
+      const maxQuota = pelanggan.kategori === KategoriPelanggan.RT ? 1 : 2;
       
       const dailyTransactions = await prisma.transaksi.findMany({
         where: {
-          nikPelanggan: data.nikPelanggan,
+          idPelanggan: pelanggan.idPelanggan,
           tanggalTransaksi: { gte: today }
         }
       });
@@ -85,15 +74,14 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
         return { error: `Jumlah pesanan melebihi batas. Sisa kuota kategori ${pelanggan.kategori} hari ini adalah ${maxQuota - usedQuota} tabung.` };
       }
       
-    } else if (pelanggan.kategori === 'PENGECER') {
-      // weekly limit: pengecer(10)
+    } else if (pelanggan.kategori === KategoriPelanggan.PENGECER) {
       const maxQuota = 10;
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 7);
 
       const weeklyTransactions = await prisma.transaksi.findMany({
         where: {
-          nikPelanggan: data.nikPelanggan,
+          idPelanggan: pelanggan.idPelanggan,
           tanggalTransaksi: { gte: sevenDaysAgo }
         }
       });
@@ -106,21 +94,19 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
         return { error: `Jumlah pesanan melebihi batas. Sisa kuota kategori PENGECER minggu ini adalah ${maxQuota - usedQuota} tabung.` };
       }
     }
-    // --- end of purchase limit logic ---
 
-    // calculate dynamic price: pengecer/um = 19000, rt = 20000
-    const hargaPerTabung = pelanggan.kategori === 'RT' ? 20000 : 19000;
+    // calculate dynamic price
+    const hargaPerTabung = pelanggan.kategori === KategoriPelanggan.RT ? 20000 : 19000;
     const finalTotalHarga = data.jumlahTabung * hargaPerTabung;
 
-    // create the transaction record in database
+    // create the transaction record
     await prisma.transaksi.create({
       data: {
-        nikPelanggan: data.nikPelanggan,
+        idPelanggan: pelanggan.idPelanggan,
+        idProduk: produk.idProduk,
         jumlahTabung: data.jumlahTabung,
         totalHarga: finalTotalHarga,
         metodePembayaran: data.metodePembayaran as MetodePembayaran,
-        kasirId: sessionData.id,
-        sesiId: sessionData.sesiId || null,
       },
     });
 
