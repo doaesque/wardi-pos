@@ -93,13 +93,13 @@ export async function getDetailRiwayatPelanggan(nik: string, monthOffset: number
     // get transactions up to the earliest needed point (2 months ago minimum)
     const earliestDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
     
+    // search using relation to the exact customer's nik
     const allTrx = await prisma.transaksi.findMany({
       where: { 
-        nikPelanggan: nik, 
+        pelanggan: { nik: nik }, 
         tanggalTransaksi: { gte: earliestDate } 
       },
-      orderBy: { tanggalTransaksi: 'desc' },
-      include: { kasir: true }
+      orderBy: { tanggalTransaksi: 'desc' }
     });
 
     let totalHariIni = 0;
@@ -121,7 +121,7 @@ export async function getDetailRiwayatPelanggan(nik: string, monthOffset: number
           id: trx.id,
           tanggal: trx.tanggalTransaksi,
           jumlah: trx.jumlahTabung,
-          kasir: trx.kasir?.nama || '-'
+          kasir: '-' // placeholder as cashier relation is removed
         });
       }
     }

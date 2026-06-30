@@ -27,38 +27,19 @@ export async function loginUser(formData: FormData) {
       return { error: 'Kata sandi yang Anda masukkan tidak tepat.' };
     }
 
-    // auto-close any previously dangling sessions for this user
-    // handles cases where the user closed the browser without logging out
-    await prisma.sesiKerja.updateMany({
-      where: { 
-        kasirId: user.id,
-        waktuSelesai: null 
-      },
-      data: { waktuSelesai: new Date() }
-    });
-
-    // create new work session log
-    const sessionDb = await prisma.sesiKerja.create({
-      data: {
-        kasirId: user.id,
-      },
-    });
-
     const cookieStore = await cookies();
 
-    // set cookie without maxAge to make it a session cookie
+    // set cookie without maxage to make it a session cookie
     // this ensures logout happens automatically when browser is closed
     cookieStore.set('wardi_session', JSON.stringify({
       id: user.id,
       username: user.username,
       role: user.role,
-      nama: user.nama,
-      sesiId: sessionDb.id // save session id to close it later
+      nama: user.nama
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      // no maxAge property included
     });
 
     return { success: true };
@@ -70,22 +51,10 @@ export async function loginUser(formData: FormData) {
 export async function logoutUser() {
   try {
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('wardi_session');
-
-    // update work session end time if session exists
-    if (sessionCookie) {
-      const sessionData = JSON.parse(sessionCookie.value);
-
-      if (sessionData.sesiId) {
-        await prisma.sesiKerja.update({
-          where: { id: sessionData.sesiId },
-          data: { waktuSelesai: new Date() },
-        });
-      }
-    }
-
+    
     // destroy session cookie
     cookieStore.delete('wardi_session');
+    
     return { success: true };
   } catch (error) {
     return { error: 'Terjadi gangguan saat memproses permintaan keluar.' };

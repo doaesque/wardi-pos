@@ -9,7 +9,6 @@ export async function addEmployee(formData: FormData) {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
   const role = formData.get('role') as string;
-  const jadwalStr = formData.get('jadwal') as string;
 
   // validate empty inputs
   if (!nama || !username || !password || !role) {
@@ -26,19 +25,13 @@ export async function addEmployee(formData: FormData) {
       return { error: 'Nama pengguna tersebut sudah terdaftar di dalam sistem.' };
     }
 
-    // parse scheduled shifts
-    const jadwalList = jadwalStr ? JSON.parse(jadwalStr) : [];
-
     // create new employee
     await prisma.user.create({
       data: {
         nama,
         username,
         password, // note: use bcrypt in production
-        role,
-        jadwalShift: {
-          create: jadwalList.map((j: any) => ({ hari: j.hari, shift: j.shift }))
-        }
+        role
       },
     });
 
@@ -57,7 +50,6 @@ export async function editEmployee(formData: FormData) {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string; // optional
   const role = formData.get('role') as string;
-  const jadwalStr = formData.get('jadwal') as string;
 
   if (!id || !nama || !username || !role) {
     return { error: 'Kolom nama, pengguna, dan peran wajib diisi.' };
@@ -73,18 +65,11 @@ export async function editEmployee(formData: FormData) {
       return { error: 'Nama pengguna tersebut sudah dipakai oleh akun lain.' };
     }
 
-    // parse scheduled shifts
-    const jadwalList = jadwalStr ? JSON.parse(jadwalStr) : [];
-
     // prepare update payload
     const updateData: any = { 
       nama, 
       username, 
-      role,
-      jadwalShift: {
-        deleteMany: {}, // clear existing shifts
-        create: jadwalList.map((j: any) => ({ hari: j.hari, shift: j.shift }))
-      }
+      role
     };
     
     if (password && password.trim() !== '') {
