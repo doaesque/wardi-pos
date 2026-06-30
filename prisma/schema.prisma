@@ -6,17 +6,24 @@ datasource db {
   provider = "postgresql"
 }
 
-// customer categories
-enum KategoriPelanggan {
-  RT
-  UM
-  PENGECER
+// customer categories model
+model KategoriPelanggan {
+  idKategori   String      @id @default(cuid()) // primary key
+  namaKategori String      @unique
+  batasKuota   Int         // quota limit number
+  periodeKuota String      // quota period (hari or minggu)
+
+  // relation to customers
+  pelanggan    Pelanggan[]
 }
 
-// payment methods
-enum MetodePembayaran {
-  TUNAI
-  TRANSFER
+// payment methods model
+model StatusPembayaran {
+  idStatus   String      @id @default(cuid()) // primary key
+  namaStatus String      @unique
+
+  // relation to transactions
+  transaksi  Transaksi[]
 }
 
 // product data
@@ -34,7 +41,11 @@ model Pelanggan {
   idPelanggan String            @id @default(cuid()) // primary key
   nik         String            @unique
   nama        String
-  kategori    KategoriPelanggan
+  idKategori  String
+
+  // relation to customer category
+  kategori    KategoriPelanggan @relation(fields: [idKategori], references: [idKategori])
+
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -49,8 +60,11 @@ model Transaksi {
   idProduk         String
   jumlahTabung     Int
   totalHarga       Int
-  metodePembayaran MetodePembayaran
+  idStatus         String
   tanggalTransaksi DateTime         @default(now())
+
+  // relation to payment status
+  status           StatusPembayaran @relation(fields: [idStatus], references: [idStatus])
 
   // relation to customer
   pelanggan        Pelanggan        @relation(fields: [idPelanggan], references: [idPelanggan], onDelete: Cascade)
