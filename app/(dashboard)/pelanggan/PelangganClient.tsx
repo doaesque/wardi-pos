@@ -4,8 +4,8 @@ import { useState, useMemo, useTransition } from 'react';
 import { Eye, Edit, Trash2, UserPlus, X, Search, CheckCircle, AlertTriangle, ArrowUpDown, Loader2, ChevronDown } from 'lucide-react';
 import { addCustomer, deleteCustomer, editCustomer, getDetailRiwayatPelanggan } from '@/app/actions/pelanggan';
 
-// define types
-type Pelanggan = { nik: string; nama: string; kategori: string; };
+// define types to include category id for relational updates
+type Pelanggan = { nik: string; nama: string; kategori: string; idKategori: string; };
 
 export default function PelangganClient({ initialData }: { initialData: Pelanggan[] }) {
   const [isPending, startTransition] = useTransition();
@@ -34,7 +34,7 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
     let sortableItems = [...initialData];
     sortableItems = sortableItems.filter((item) => {
       const matchSearch = item.nama.toLowerCase().includes(search.toLowerCase()) || item.nik.includes(search);
-      const matchKategori = filterKategori ? item.kategori === filterKategori : true;
+      const matchKategori = filterKategori ? item.idKategori === filterKategori : true;
       return matchSearch && matchKategori;
     });
 
@@ -77,19 +77,21 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
   };
 
   const openDetail = async (p: Pelanggan) => { setModal({ type: 'detail', data: p }); setMonthOffset(0); fetchHistory(p.nik, 0); };
+
   const fetchHistory = async (nik: string, offset: number) => {
     setHistoryLoading(true);
     const res = await getDetailRiwayatPelanggan(nik, offset);
     if (res?.success) setHistoryData(res.data);
     setHistoryLoading(false);
   };
+
   const changeHistoryMonth = (offset: number) => { setMonthOffset(offset); if (modal.data) fetchHistory(modal.data.nik, offset); };
 
   const getCategoryColor = (kategori: string) => {
     switch(kategori) {
-      case 'RT': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'Rumah Tangga': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
       case 'UM': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-      case 'PENGECER': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+      case 'Pengecer': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
       default: return 'bg-zinc-100 text-zinc-700';
     }
   };
@@ -121,7 +123,10 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
             <div className="relative w-full md:w-auto">
               <select value={filterKategori} onChange={(e) => setFilterKategori(e.target.value)} className="appearance-none w-full py-2 pl-3 pr-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-medium outline-none text-zinc-700 dark:text-zinc-300 focus:border-[#52796F] cursor-pointer hover:border-zinc-300 transition-colors">
-                <option value="">Semua Kategori</option><option value="RT">Rumah Tangga (RT)</option><option value="UM">Usaha Mikro (UM)</option><option value="PENGECER">Pengecer</option>
+                <option value="">Semua Kategori</option>
+                <option value="K01">Rumah Tangga (RT)</option>
+                <option value="K02">Usaha Mikro (UM)</option>
+                <option value="K03">Pengecer</option>
               </select>
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
             </div>
@@ -177,8 +182,10 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">Kategori</label>
               <div className="relative">
-                <select name="kategori" required onInvalid={handleInvalid} onInput={handleInput} className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer">
-                  <option value="RT">Rumah Tangga (RT)</option><option value="UM">Usaha Mikro (UM)</option><option value="PENGECER">Pengecer</option>
+                <select name="idKategori" required onInvalid={handleInvalid} onInput={handleInput} className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer">
+                  <option value="K01">Rumah Tangga (RT)</option>
+                  <option value="K02">Usaha Mikro (UM)</option>
+                  <option value="K03">Pengecer</option>
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
               </div>
@@ -234,7 +241,17 @@ export default function PelangganClient({ initialData }: { initialData: Pelangga
                   <input type="hidden" name="nik" value={modal.data.nik} />
                   <div><label className="block text-xs font-medium text-zinc-500 mb-1">NIK (Paten)</label><input type="text" disabled value={modal.data.nik} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-500 cursor-not-allowed outline-none" /></div>
                   <div><label className="block text-xs font-medium text-zinc-500 mb-1">Nama Lengkap</label><input type="text" name="nama" defaultValue={modal.data.nama} required onInvalid={handleInvalid} onInput={handleInput} className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F]" /></div>
-                  <div><label className="block text-xs font-medium text-zinc-500 mb-1">Kategori Pelanggan</label><div className="relative"><select name="kategori" defaultValue={modal.data.kategori} required onInvalid={handleInvalid} onInput={handleInput} className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer"><option value="RT">Rumah Tangga (RT)</option><option value="UM">Usaha Mikro (UM)</option><option value="PENGECER">Pengecer</option></select><ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" /></div></div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-500 mb-1">Kategori Pelanggan</label>
+                    <div className="relative">
+                      <select name="idKategori" defaultValue={modal.data.idKategori} required onInvalid={handleInvalid} onInput={handleInput} className="appearance-none w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent outline-none focus:border-[#52796F] cursor-pointer">
+                        <option value="K01">Rumah Tangga (RT)</option>
+                        <option value="K02">Usaha Mikro (UM)</option>
+                        <option value="K03">Pengecer</option>
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                    </div>
+                  </div>
                   <button type="submit" disabled={isPending} className="w-full mt-2 py-2.5 text-sm rounded-lg text-white font-semibold bg-[#52796F] hover:bg-[#43645a] disabled:opacity-50">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
                 </form>
               )}
