@@ -3,10 +3,12 @@
 import prisma from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
+// expect string 'Tunai' or 'Transfer' from client UI
 type DataTransaksi = {
   nikPelanggan: string;
   jumlahTabung: number;
-  idStatus: string;
+  totalHarga?: number;
+  metodePembayaran: string;
 };
 
 export async function fetchRiwayatTransaksi() {
@@ -14,17 +16,18 @@ export async function fetchRiwayatTransaksi() {
     const data = await prisma.transaksi.findMany({
       orderBy: { tanggalTransaksi: 'desc' },
       include: {
+        status: { select: { namaStatus: true } },
         pelanggan: {
-          include: {
-            kategori: true
+          select: {
+            nama: true,
+            kategori: { select: { namaKategori: true } }
           }
-        },
-        status: true
+        }
       }
     });
     return data;
   } catch (error) {
-    console.error('terjadi kesalahan saat memuat data transaksi:', error);
+    console.error('error fetching transactions:', error);
     return [];
   }
 }
@@ -32,11 +35,11 @@ export async function fetchRiwayatTransaksi() {
 export async function prosesTransaksiServer(data: DataTransaksi) {
   try {
     // validate required fields
-    if (!data.nikPelanggan || !data.jumlahTabung || data.jumlahTabung <= 0 || !data.idStatus) {
+    if (!data.nikPelanggan || !data.jumlahTabung || data.jumlahTabung <= 0 || !data.metodePembayaran) {
       return { error: 'Data transaksi tidak lengkap atau jumlah tabung tidak valid.' };
     }
 
-    // verify if customer exists in database
+    // verify if customer exists in database, include category rules
     const pelanggan = await prisma.pelanggan.findUnique({
       where: { nik: data.nikPelanggan },
       include: { kategori: true }
@@ -51,8 +54,17 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
     if (!produk) {
       // auto-create if product is missing
       produk = await prisma.produk.create({
-        data: { idProduk: 'PR001', namaProduk: 'LPG 3 Kg', harga: 20000 }
+        data: { namaProduk: 'LPG 3 Kg', harga: 20000 }
       });
+    }
+
+    // get payment status id based on string sent by frontend
+    const statusPembayaran = await prisma.statusPembayaran.findUnique({
+      where: { namaStatus: data.metodePembayaran }
+    });
+
+    if (!statusPembayaran) {
+      return { error: 'Metode pembayaran tidak valid di database.' };
     }
 
     const today = new Date();
@@ -60,7 +72,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
     let usedQuota = 0;
     const maxQuota = pelanggan.kategori.batasKuota;
 
-    // purchase limit logic based on 3nf schema attributes
+    // --- dynamic purchase limit logic ---
     if (pelanggan.kategori.periodeKuota === 'HARI') {
       const dailyTransactions = await prisma.transaksi.findMany({
         where: {
@@ -76,6 +88,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
       } else if (usedQuota + data.jumlahTabung > maxQuota) {
         return { error: `Jumlah pesanan melebihi batas. Sisa kuota kategori ${pelanggan.kategori.namaKategori} hari ini adalah ${maxQuota - usedQuota} tabung.` };
       }
+
     } else if (pelanggan.kategori.periodeKuota === 'MINGGU') {
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 7);
@@ -96,25 +109,25 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
       }
     }
 
-    // calculate dynamic price (harga per tabung)
-    const hargaPerTabung = pelanggan.idKategori === 'K01' ? 20000 : 19000;
+    // calculate dynamic price
+    const hargaPerTabung = pelanggan.kategori.namaKategori === 'Rumah Tangga' ? 20000 : 19000;
     const finalTotalHarga = data.jumlahTabung * hargaPerTabung;
 
-    // create the transaction record
+    // create the transaction record using foreign key
     await prisma.transaksi.create({
       data: {
         idPelanggan: pelanggan.idPelanggan,
         idProduk: produk.idProduk,
-        idStatus: data.idStatus,
         jumlahTabung: data.jumlahTabung,
         totalHarga: finalTotalHarga,
+        idStatus: statusPembayaran.idStatus,
       },
     });
 
     revalidatePath('/transaksi');
     return { success: true };
   } catch (error: any) {
-    console.error('terjadi kesalahan sistem saat memproses transaksi:', error);
+    console.error('transaction error:', error);
     return { error: `Transaksi ditolak oleh peladen. Detail: ${error.message || 'Kesalahan internal'}` };
   }
 }
