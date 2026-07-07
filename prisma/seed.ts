@@ -1,11 +1,40 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../app/lib/prisma';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
-
 async function main() {
   console.log('starting database seeding...');
+
+  // seed customer categories based on report
+  const katRT = await prisma.kategoriPelanggan.upsert({
+    where: { idKategori: 'K01' },
+    update: {},
+    create: { idKategori: 'K01', namaKategori: 'Rumah Tangga', batasKuota: 1, periodeKuota: 'HARI' }
+  });
+  const katUM = await prisma.kategoriPelanggan.upsert({
+    where: { idKategori: 'K02' },
+    update: {},
+    create: { idKategori: 'K02', namaKategori: 'UM', batasKuota: 2, periodeKuota: 'HARI' }
+  });
+  const katPengecer = await prisma.kategoriPelanggan.upsert({
+    where: { idKategori: 'K03' },
+    update: {},
+    create: { idKategori: 'K03', namaKategori: 'Pengecer', batasKuota: 10, periodeKuota: 'MINGGU' }
+  });
+  console.log('categories seeded.');
+
+  // seed payment statuses
+  await prisma.statusPembayaran.upsert({
+    where: { idStatus: 'S01' },
+    update: {},
+    create: { idStatus: 'S01', namaStatus: 'Tunai' }
+  });
+  await prisma.statusPembayaran.upsert({
+    where: { idStatus: 'S02' },
+    update: {},
+    create: { idStatus: 'S02', namaStatus: 'Transfer' }
+  });
+  console.log('payment statuses seeded.');
 
   // seed default admin account
   await prisma.user.upsert({
@@ -34,49 +63,13 @@ async function main() {
   console.log('default kasir account created.');
 
   // ensure product exists for relation
-  const lpg = await prisma.produk.upsert({
-    where: { idProduk: 'PR001' },
-    update: {},
-    create: {
-      idProduk: 'PR001',
-      namaProduk: 'LPG 3 Kg',
-      harga: 20000,
-    }
-  });
-  console.log('produk master (lpg 3 kg) created.');
-
-  // seed payment methods
-  await prisma.statusPembayaran.upsert({
-    where: { namaStatus: 'Tunai' },
-    update: {},
-    create: { namaStatus: 'Tunai' }
-  });
-  await prisma.statusPembayaran.upsert({
-    where: { namaStatus: 'Transfer' },
-    update: {},
-    create: { namaStatus: 'Transfer' }
-  });
-  console.log('payment methods created.');
-
-  // seed customer categories based on quota rules
-  const kategoriRT = await prisma.kategoriPelanggan.upsert({
-    where: { namaKategori: 'Rumah Tangga' },
-    update: {},
-    create: { namaKategori: 'Rumah Tangga', batasKuota: 1, periodeKuota: 'HARI' }
-  });
-
-  const kategoriUM = await prisma.kategoriPelanggan.upsert({
-    where: { namaKategori: 'UM' },
-    update: {},
-    create: { namaKategori: 'UM', batasKuota: 2, periodeKuota: 'HARI' }
-  });
-
-  const kategoriWarung = await prisma.kategoriPelanggan.upsert({
-    where: { namaKategori: 'Warung/Pengecer' },
-    update: {},
-    create: { namaKategori: 'Warung/Pengecer', batasKuota: 10, periodeKuota: 'MINGGU' }
-  });
-  console.log('customer categories and quotas created.');
+  let produk = await prisma.produk.findFirst();
+  if (!produk) {
+    produk = await prisma.produk.create({
+      data: { idProduk: 'PR001', namaProduk: 'LPG 3 Kg', harga: 20000 }
+    });
+    console.log('product master seeded.');
+  }
 
   // use process.cwd() to safely navigate from root directory
   const csvPath = path.join(process.cwd(), 'prisma', 'data', 'pelanggan.csv');
@@ -87,44 +80,37 @@ async function main() {
   }
 
   const csvData = fs.readFileSync(csvPath, 'utf-8');
-
-  // split the content by new line and filter out empty lines
   const lines = csvData.split('\n').filter(line => line.trim() !== '');
 
   // loop through each line (skip the first line because it is the header)
   for (let i = 1; i < lines.length; i++) {
-    // split the row by comma and trim whitespaces
     const baris = lines[i].split(',');
-
     if (baris.length < 3) continue;
 
     const nama = baris[0].trim();
     const nik = baris[1].trim();
     const kategoriString = baris[2].trim().toLowerCase();
 
-    // determine category id based on string
-    let targetKategoriId = kategoriRT.idKategori;
+    let idKategori = katRT.idKategori;
 
-    if (kategoriString.includes('rumah tangga') || kategoriString === 'rt') {
-      targetKategoriId = kategoriRT.idKategori;
-    } else if (kategoriString.includes('um')) {
-      targetKategoriId = kategoriUM.idKategori;
-    } else if (kategoriString.includes('pengecer') || kategoriString.includes('warung')) {
-      targetKategoriId = kategoriWarung.idKategori;
+    if (kategoriString.includes('um') || kategoriString.includes('pengecer')) {
+      // randomly pick between um and pengecer (50/50 chance)
+      const isUm = Math.random() < 0.5;
+      idKategori = isUm ? katUM.idKategori : katPengecer.idKategori;
     }
 
-    // insert into database using upsert to avoid errors on duplicate nik
+    // insert into database mapping the correct category foreign key
     await prisma.pelanggan.upsert({
       where: { nik: nik },
       update: {},
       create: {
         nik: nik,
         nama: nama,
-        idKategori: targetKategoriId,
+        idKategori: idKategori,
       },
     });
 
-    console.log(`inserted: ${nama} - ${nik}`);
+    console.log(`inserted: ${nama} - ${nik} with category ID ${idKategori}`);
   }
 
   console.log('database seeding completed successfully.');
@@ -136,6 +122,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    // close prisma client connection
     await prisma.$disconnect();
   });

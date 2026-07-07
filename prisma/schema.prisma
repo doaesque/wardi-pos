@@ -6,21 +6,21 @@ datasource db {
   provider = "postgresql"
 }
 
-// customer categories model
+// customer categories table
 model KategoriPelanggan {
-  idKategori   String      @id @default(cuid()) // primary key
-  namaKategori String      @unique
-  batasKuota   Int         // quota limit number
-  periodeKuota String      // quota period (hari or minggu)
+  idKategori   String      @id @default(cuid())
+  namaKategori String
+  batasKuota   Int
+  periodeKuota String      // e.g., "HARI", "MINGGU"
 
   // relation to customers
   pelanggan    Pelanggan[]
 }
 
-// payment methods model
+// payment status table
 model StatusPembayaran {
-  idStatus   String      @id @default(cuid()) // primary key
-  namaStatus String      @unique
+  idStatus   String      @id @default(cuid())
+  namaStatus String
 
   // relation to transactions
   transaksi  Transaksi[]
@@ -28,7 +28,7 @@ model StatusPembayaran {
 
 // product data
 model Produk {
-  idProduk   String      @id @default(cuid()) // primary key
+  idProduk   String      @id @default(cuid())
   namaProduk String
   harga      Int
 
@@ -38,16 +38,15 @@ model Produk {
 
 // customer master data
 model Pelanggan {
-  idPelanggan String            @id @default(cuid()) // primary key
+  idPelanggan String            @id @default(cuid())
   nik         String            @unique
   nama        String
-  idKategori  String
-
-  // relation to customer category
-  kategori    KategoriPelanggan @relation(fields: [idKategori], references: [idKategori])
-
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+  idKategori  String
+
+  // relation to category
+  kategori    KategoriPelanggan @relation(fields: [idKategori], references: [idKategori])
 
   // relation to transactions
   transaksi   Transaksi[]
@@ -55,30 +54,26 @@ model Pelanggan {
 
 // transaction history
 model Transaksi {
-  id               String           @id @default(cuid()) // unique id
-  idPelanggan      String
-  idProduk         String
+  id               String           @id @default(cuid())
   jumlahTabung     Int
   totalHarga       Int
-  idStatus         String
   tanggalTransaksi DateTime         @default(now())
+  idPelanggan      String
+  idProduk         String
+  idStatus         String
 
-  // relation to payment status
-  status           StatusPembayaran @relation(fields: [idStatus], references: [idStatus])
-
-  // relation to customer
+  // relations
   pelanggan        Pelanggan        @relation(fields: [idPelanggan], references: [idPelanggan], onDelete: Cascade)
-
-  // relation to product
   produk           Produk           @relation(fields: [idProduk], references: [idProduk], onDelete: Cascade)
+  status           StatusPembayaran @relation(fields: [idStatus], references: [idStatus])
 }
 
 // admin/cashier users
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
-  password  String   // will store hashed password
+  password  String
   nama      String
-  role      String   @default("KASIR") // kasir or admin
+  role      String   @default("KASIR")
   createdAt DateTime @default(now())
 }
