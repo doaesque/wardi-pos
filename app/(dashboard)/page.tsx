@@ -4,14 +4,20 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, User, CreditCard, Banknote, Minus, Plus, Receipt, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { searchPelanggan } from '@/app/actions/pelanggan';
 import { prosesTransaksiServer } from '@/app/actions/transaksi';
-import { MetodePembayaran } from '@prisma/client';
 import { toPng } from 'html-to-image';
 
-type Pelanggan = { nik: string; nama: string; kategori: string; };
+// update type to match 3nf relation from prisma include
+type Pelanggan = { 
+  nik: string; 
+  nama: string; 
+  idKategori: string; 
+  kategori: { namaKategori: string }; 
+};
 
 export default function KasirPage() {
   const [jumlahTabung, setJumlahTabung] = useState<number>(1);
-  const [metodePembayaran, setMetodePembayaran] = useState<MetodePembayaran>(MetodePembayaran.TUNAI);
+  // use s01 for tunai and s02 for transfer based on statuspembayaran table
+  const [metodePembayaran, setMetodePembayaran] = useState<string>('S01');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Pelanggan[]>([]);
   const [selectedPelanggan, setSelectedPelanggan] = useState<Pelanggan | null>(null);
@@ -20,11 +26,14 @@ export default function KasirPage() {
   const hiddenReceiptRef = useRef<HTMLDivElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // state to prevent hydration mismatch for date
+  const [isMounted, setIsMounted] = useState(false);
 
-  // set harga dinamis berdasarkan kategori yang dipilih
-  let hargaPerTabung = 20000; // default (rt)
+  // set dynamic price based on category id (k01 is rumah tangga)
+  let hargaPerTabung = 20000;
   if (selectedPelanggan) {
-    if (selectedPelanggan.kategori === 'UM' || selectedPelanggan.kategori === 'PENGECER') {
+    if (selectedPelanggan.idKategori !== 'K01') {
       hargaPerTabung = 19000;
     }
   }
@@ -37,10 +46,15 @@ export default function KasirPage() {
   };
 
   useEffect(() => {
+    // mark component as mounted to safely render client-only date
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery.trim().length >= 1) {
         setIsSearching(true);
-        const results = await searchPelanggan(searchQuery);
+        const results = await searchPelanggan(searchQuery) as unknown as Pelanggan[];
         setSearchResults(results);
         setIsSearching(false);
       } else {
@@ -65,7 +79,14 @@ export default function KasirPage() {
     if (jumlahTabung < 1) { showNotification('Jumlah tabung minimal adalah 1.', 'error'); return; }
 
     setIsProcessing(true);
-    const data = { nikPelanggan: selectedPelanggan.nik, jumlahTabung, metodePembayaran };
+    
+    // map the state to idstatus for backend consumption
+    const data = { 
+      nikPelanggan: selectedPelanggan.nik, 
+      jumlahTabung, 
+      idStatus: metodePembayaran 
+    };
+    
     const res = await prosesTransaksiServer(data);
     
     if (res?.error) {
@@ -81,12 +102,13 @@ export default function KasirPage() {
         } catch (err) { console.error("gagal mencetak nota:", err); }
       }
       showNotification('Transaksi dicatat dan nota diunduh!', 'success');
-      setSelectedPelanggan(null); setSearchQuery(''); setJumlahTabung(1); setMetodePembayaran(MetodePembayaran.TUNAI);
+      setSelectedPelanggan(null); setSearchQuery(''); setJumlahTabung(1); setMetodePembayaran('S01');
     }
     setIsProcessing(false);
   };
 
-  const currentDate = new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+  // generate date only on client to avoid hydration mismatch
+  const currentDate = isMounted ? new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '';
 
   return (
     <div className="relative h-full flex flex-col">
@@ -101,7 +123,7 @@ export default function KasirPage() {
 
       <div className="flex flex-col lg:flex-row gap-6 items-start pb-36 lg:pb-0">
         
-        {/* Kolom Kiri: Input */}
+        {/* left column: input */}
         <div className="flex-1 w-full space-y-6">
           <div className="bg-white dark:bg-zinc-950 p-4 md:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
             <h2 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2"><User size={18} className="text-[#52796F]" /> Identitas Pelanggan</h2>
@@ -119,7 +141,7 @@ export default function KasirPage() {
                           <li key={p.nik} onClick={() => { setSelectedPelanggan(p); setSearchQuery(''); setSearchResults([]); }} className="p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">
                             <div className="flex justify-between items-center">
                               <div><p className="font-medium text-sm md:text-base text-zinc-900 dark:text-white">{p.nama}</p><p className="text-xs text-zinc-500 font-mono mt-0.5">{p.nik}</p></div>
-                              <span className="text-[10px] uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded font-semibold text-zinc-600 dark:text-zinc-400">{p.kategori}</span>
+                              <span className="text-[10px] uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded font-semibold text-zinc-600 dark:text-zinc-400">{p.kategori.namaKategori}</span>
                             </div>
                           </li>
                         ))}
@@ -132,7 +154,7 @@ export default function KasirPage() {
               <div className="flex items-center justify-between p-4 rounded-lg bg-[#52796F]/10 border border-[#52796F]/20">
                 <div>
                   <p className="font-semibold text-zinc-900 dark:text-white">{selectedPelanggan.nama}</p>
-                  <div className="flex items-center gap-2 mt-1"><p className="text-xs text-zinc-500 font-mono">{selectedPelanggan.nik}</p><span className="text-[10px] uppercase tracking-wider bg-[#52796F]/20 text-[#52796F] px-2 py-0.5 rounded font-bold">{selectedPelanggan.kategori}</span></div>
+                  <div className="flex items-center gap-2 mt-1"><p className="text-xs text-zinc-500 font-mono">{selectedPelanggan.nik}</p><span className="text-[10px] uppercase tracking-wider bg-[#52796F]/20 text-[#52796F] px-2 py-0.5 rounded font-bold">{selectedPelanggan.kategori.namaKategori}</span></div>
                 </div>
                 <button onClick={() => setSelectedPelanggan(null)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-md"><Trash2 size={18} /></button>
               </div>
@@ -158,24 +180,24 @@ export default function KasirPage() {
           <div className="bg-white dark:bg-zinc-950 p-4 md:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
             <h2 className="text-sm font-bold text-zinc-900 dark:text-white mb-4">Metode Pembayaran</h2>
             <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <button onClick={() => setMetodePembayaran(MetodePembayaran.TUNAI)} className={`flex flex-col items-center justify-center p-3 md:p-4 rounded-xl border-2 transition-all ${metodePembayaran === MetodePembayaran.TUNAI ? 'border-[#52796F] bg-[#52796F]/5' : 'border-zinc-200 dark:border-zinc-800'}`}>
-                <Banknote size={24} className={`mb-2 ${metodePembayaran === MetodePembayaran.TUNAI ? 'text-[#52796F]' : 'text-zinc-400'}`} />
-                <span className={`font-semibold text-sm ${metodePembayaran === MetodePembayaran.TUNAI ? 'text-[#52796F]' : 'text-zinc-600 dark:text-zinc-400'}`}>Tunai</span>
+              <button onClick={() => setMetodePembayaran('S01')} className={`flex flex-col items-center justify-center p-3 md:p-4 rounded-xl border-2 transition-all ${metodePembayaran === 'S01' ? 'border-[#52796F] bg-[#52796F]/5' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                <Banknote size={24} className={`mb-2 ${metodePembayaran === 'S01' ? 'text-[#52796F]' : 'text-zinc-400'}`} />
+                <span className={`font-semibold text-sm ${metodePembayaran === 'S01' ? 'text-[#52796F]' : 'text-zinc-600 dark:text-zinc-400'}`}>Tunai</span>
               </button>
-              <button onClick={() => setMetodePembayaran(MetodePembayaran.TRANSFER)} className={`flex flex-col items-center justify-center p-3 md:p-4 rounded-xl border-2 transition-all ${metodePembayaran === MetodePembayaran.TRANSFER ? 'border-[#52796F] bg-[#52796F]/5' : 'border-zinc-200 dark:border-zinc-800'}`}>
-                <CreditCard size={24} className={`mb-2 ${metodePembayaran === MetodePembayaran.TRANSFER ? 'text-[#52796F]' : 'text-zinc-400'}`} />
-                <span className={`font-semibold text-sm ${metodePembayaran === MetodePembayaran.TRANSFER ? 'text-[#52796F]' : 'text-zinc-600 dark:text-zinc-400'}`}>Transfer</span>
+              <button onClick={() => setMetodePembayaran('S02')} className={`flex flex-col items-center justify-center p-3 md:p-4 rounded-xl border-2 transition-all ${metodePembayaran === 'S02' ? 'border-[#52796F] bg-[#52796F]/5' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                <CreditCard size={24} className={`mb-2 ${metodePembayaran === 'S02' ? 'text-[#52796F]' : 'text-zinc-400'}`} />
+                <span className={`font-semibold text-sm ${metodePembayaran === 'S02' ? 'text-[#52796F]' : 'text-zinc-600 dark:text-zinc-400'}`}>Transfer</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Kolom Kanan: Keranjang (Menyatu di Desktop, Terpisah Floating di Mobile) */}
+        {/* right column: cart (unified on desktop, floating on mobile) */}
         <div className="w-full lg:w-[400px] lg:sticky lg:top-8 z-30">
           
           <div className="lg:bg-white lg:dark:bg-zinc-950 lg:rounded-xl lg:shadow-sm lg:border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col h-fit">
             
-            {/* Header & Items (Hanya Desktop) */}
+            {/* header & items (desktop only) */}
             <div className="hidden lg:block bg-white dark:bg-zinc-950">
               <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
                 <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Receipt size={18} className="text-[#52796F]" /> Keranjang Kasir</h2>
@@ -192,10 +214,10 @@ export default function KasirPage() {
               </div>
             </div>
 
-            {/* Kotak Checkout - Di Mobile Sticky Floating Bar, Di Desktop Menyatu */}
+            {/* checkout box - sticky floating bar on mobile, unified on desktop */}
             <div className="fixed bottom-0 left-0 right-0 lg:static border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 lg:bg-zinc-50 lg:dark:bg-zinc-900/50 shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.3)] lg:shadow-none z-40">
               <div className="p-4 lg:p-5 lg:pb-4 space-y-1 lg:space-y-2 text-sm mb-2 lg:mb-0">
-                <div className="flex justify-between text-zinc-500 lg:mb-2"><span>Metode</span><span className="font-medium text-zinc-700 dark:text-zinc-300">{metodePembayaran}</span></div>
+                <div className="flex justify-between text-zinc-500 lg:mb-2"><span>Metode</span><span className="font-medium text-zinc-700 dark:text-zinc-300">{metodePembayaran === 'S01' ? 'Tunai' : 'Transfer'}</span></div>
                 <div className="flex justify-between items-center lg:pt-2 lg:mt-2 lg:border-t border-zinc-200 dark:border-zinc-700/50">
                   <span className="font-semibold text-zinc-900 dark:text-white">Total Tagihan</span>
                   <span className="font-bold text-xl md:text-2xl text-[#52796F]">Rp {totalHarga.toLocaleString('id-ID')}</span>
@@ -213,15 +235,15 @@ export default function KasirPage() {
         </div>
       </div>
 
-      {/* Area Nota Tersembunyi */}
+      {/* hidden receipt area */}
       <div className="absolute left-[-9999px] top-[-9999px]">
         <div ref={hiddenReceiptRef} className="bg-white text-black p-6 w-[320px] font-mono text-sm leading-relaxed">
           <div className="text-center mb-6"><h2 className="font-bold text-lg uppercase tracking-widest">WardiPOS</h2><p className="text-xs">Pangkalan Wardi Sukardi</p><p className="text-xs mt-1">{currentDate}</p><div className="border-b-2 border-dashed border-gray-400 mt-4 mb-1"></div></div>
-          <div className="mb-4 space-y-1"><div className="flex justify-between"><span className="text-gray-600">Pelanggan:</span><span className="font-semibold text-right max-w-[140px] truncate">{selectedPelanggan ? selectedPelanggan.nama : "-"}</span></div><div className="flex justify-between"><span className="text-gray-600">NIK:</span><span className="text-right">{selectedPelanggan ? selectedPelanggan.nik.substring(0, 8) + "********" : "-"}</span></div><div className="flex justify-between"><span className="text-gray-600">Kategori:</span><span className="text-right">{selectedPelanggan ? selectedPelanggan.kategori : "-"}</span></div></div>
+          <div className="mb-4 space-y-1"><div className="flex justify-between"><span className="text-gray-600">Pelanggan:</span><span className="font-semibold text-right max-w-[140px] truncate">{selectedPelanggan ? selectedPelanggan.nama : "-"}</span></div><div className="flex justify-between"><span className="text-gray-600">NIK:</span><span className="text-right">{selectedPelanggan ? selectedPelanggan.nik.substring(0, 8) + "********" : "-"}</span></div><div className="flex justify-between"><span className="text-gray-600">Kategori:</span><span className="text-right">{selectedPelanggan ? selectedPelanggan.kategori.namaKategori : "-"}</span></div></div>
           <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
           <div className="mb-4"><div className="flex justify-between font-bold mb-2"><span>Item</span><span>Subtotal</span></div><div className="flex justify-between items-start"><div><p>LPG 3Kg Melon</p><p className="text-xs text-gray-600">{jumlahTabung} x Rp{hargaPerTabung.toLocaleString('id-ID')}</p></div><div className="font-semibold">Rp {totalHarga.toLocaleString('id-ID')}</div></div></div>
           <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
-          <div className="space-y-1 font-bold text-base mb-6"><div className="flex justify-between"><span>TOTAL:</span><span>Rp {totalHarga.toLocaleString('id-ID')}</span></div><div className="flex justify-between text-sm font-normal mt-2"><span className="text-gray-600">Metode:</span><span>{metodePembayaran === 'TUNAI' ? 'Tunai' : 'Transfer'}</span></div></div>
+          <div className="space-y-1 font-bold text-base mb-6"><div className="flex justify-between"><span>TOTAL:</span><span>Rp {totalHarga.toLocaleString('id-ID')}</span></div><div className="flex justify-between text-sm font-normal mt-2"><span className="text-gray-600">Metode:</span><span>{metodePembayaran === 'S01' ? 'Tunai' : 'Transfer'}</span></div></div>
           <div className="text-center text-xs text-gray-500 mt-8"><p>Terima kasih atas pembelian Anda!</p><p>Simpan struk ini sebagai bukti.</p></div>
         </div>
       </div>
