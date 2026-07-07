@@ -3,7 +3,7 @@
 import prisma from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
-// expect string 'Tunai' or 'Transfer' from client UI
+// expect string 'Tunai' or 'Transfer' from client ui
 type DataTransaksi = {
   nikPelanggan: string;
   jumlahTabung: number;
@@ -126,8 +126,11 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
 
     revalidatePath('/transaksi');
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('transaction error:', error);
-    return { error: `Transaksi ditolak oleh peladen. Detail: ${error.message || 'Kesalahan internal'}` };
+    
+    // type safe error parsing
+    const errorMessage = error instanceof Error ? error.message : 'Kesalahan internal';
+    return { error: `Transaksi ditolak oleh peladen. Detail: ${errorMessage}` };
   }
 }
