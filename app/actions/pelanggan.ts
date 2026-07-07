@@ -2,22 +2,22 @@
 
 import prisma from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { KategoriPelanggan } from '@prisma/client';
 
 // add new customer
 export async function addCustomer(formData: FormData) {
   const nik = formData.get('nik') as string;
   const nama = formData.get('nama') as string;
-  const kategori = formData.get('kategori') as KategoriPelanggan;
+  const idKategori = formData.get('idKategori') as string;
 
-  if (!nik || !nama || !kategori) return { error: 'Semua data pelanggan wajib diisi.' };
+  if (!nik || !nama || !idKategori) return { error: 'Semua data pelanggan wajib diisi.' };
   if (nik.length !== 16) return { error: 'Nomor Induk Kependudukan (NIK) harus berjumlah tepat 16 angka.' };
 
   try {
     const existingCustomer = await prisma.pelanggan.findUnique({ where: { nik } });
     if (existingCustomer) return { error: 'NIK tersebut sudah terdaftar di dalam sistem.' };
 
-    await prisma.pelanggan.create({ data: { nik, nama, kategori } });
+    // create new customer with the relational category foreign key
+    await prisma.pelanggan.create({ data: { nik, nama, idKategori } });
     revalidatePath('/pelanggan');
     return { success: true };
   } catch (error) {
@@ -29,12 +29,12 @@ export async function addCustomer(formData: FormData) {
 export async function editCustomer(formData: FormData) {
   const nik = formData.get('nik') as string;
   const nama = formData.get('nama') as string;
-  const kategori = formData.get('kategori') as KategoriPelanggan;
+  const idKategori = formData.get('idKategori') as string;
 
-  if (!nik || !nama || !kategori) return { error: 'Semua data pelanggan wajib diisi.' };
+  if (!nik || !nama || !idKategori) return { error: 'Semua data pelanggan wajib diisi.' };
 
   try {
-    await prisma.pelanggan.update({ where: { nik }, data: { nama, kategori } });
+    await prisma.pelanggan.update({ where: { nik }, data: { nama, idKategori } });
     revalidatePath('/pelanggan');
     return { success: true };
   } catch (error) {
@@ -66,6 +66,7 @@ export async function searchPelanggan(query: string) {
         ]
       },
       take: 5,
+      include: { kategori: true }
     });
     return results;
   } catch (error) {
@@ -77,7 +78,7 @@ export async function searchPelanggan(query: string) {
 // fetch detail and purchase history of customer for modals
 export async function getDetailRiwayatPelanggan(nik: string, monthOffset: number) {
   const now = new Date();
-  
+
   // boundaries
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekStart = new Date(now);
@@ -92,12 +93,12 @@ export async function getDetailRiwayatPelanggan(nik: string, monthOffset: number
   try {
     // get transactions up to the earliest needed point (2 months ago minimum)
     const earliestDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-    
+
     // search using relation to the exact customer's nik
     const allTrx = await prisma.transaksi.findMany({
-      where: { 
-        pelanggan: { nik: nik }, 
-        tanggalTransaksi: { gte: earliestDate } 
+      where: {
+        pelanggan: { nik: nik },
+        tanggalTransaksi: { gte: earliestDate }
       },
       orderBy: { tanggalTransaksi: 'desc' }
     });
@@ -109,7 +110,7 @@ export async function getDetailRiwayatPelanggan(nik: string, monthOffset: number
 
     for (const trx of allTrx) {
       const d = new Date(trx.tanggalTransaksi);
-      
+
       // aggregations
       if (d >= todayStart) totalHariIni += trx.jumlahTabung;
       if (d >= weekStart) totalMingguIni += trx.jumlahTabung;
