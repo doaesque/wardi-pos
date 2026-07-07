@@ -2,9 +2,16 @@ import prisma from '@/app/lib/prisma';
 import { TransaksiClient } from './TransaksiClient';
 
 export default async function TransaksiPage() {
+  // get complete relational data according to 3nf schema
   const riwayatTransaksi = await prisma.transaksi.findMany({
     include: { 
-      pelanggan: true
+      pelanggan: {
+        // fix: ensure the category relation is explicitly fetched
+        include: {
+          kategori: true
+        }
+      },
+      status: true
     },
     orderBy: { tanggalTransaksi: 'desc' },
   });

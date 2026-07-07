@@ -6,14 +6,14 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// define types
+// define types with 3nf relation structures
 type Transaksi = { 
   id: string; 
   tanggalTransaksi: Date; 
   jumlahTabung: number; 
   totalHarga: number; 
-  metodePembayaran: string; 
-  pelanggan: { nama: string; kategori: string } | null; 
+  status: { namaStatus: string }; 
+  pelanggan: { nama: string; kategori?: { namaKategori: string } } | null; 
 };
 
 export function TransaksiClient({ initialData }: { initialData: any[] }) {
@@ -57,8 +57,8 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
         date.toLocaleDateString('id-ID'),
         date.toLocaleTimeString('id-ID'),
         `"${trx.pelanggan?.nama || 'Umum'}"`,
-        trx.pelanggan?.kategori || '-',
-        trx.metodePembayaran,
+        trx.pelanggan?.kategori?.namaKategori || 'KOSONG',
+        trx.status.namaStatus,
         trx.jumlahTabung,
         trx.totalHarga
       ].join(',');
@@ -87,8 +87,8 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
         date.toLocaleDateString('id-ID'),
         date.toLocaleTimeString('id-ID'),
         trx.pelanggan?.nama || 'Umum',
-        trx.pelanggan?.kategori || '-',
-        trx.metodePembayaran,
+        trx.pelanggan?.kategori?.namaKategori || 'KOSONG',
+        trx.status.namaStatus,
         trx.jumlahTabung,
         trx.totalHarga
       ];
@@ -118,7 +118,7 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
           trx.id.slice(-8).toUpperCase(),
           `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
           trx.pelanggan?.nama || 'Umum',
-          trx.metodePembayaran,
+          trx.status.namaStatus,
           `${trx.jumlahTabung} Tbg`,
           trx.totalHarga.toLocaleString('id-ID')
         ];
@@ -233,7 +233,9 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">{trx.pelanggan?.nama || 'Umum'}</span> 
-                      <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 ml-1.5 rounded uppercase font-semibold tracking-wide border border-zinc-200 dark:border-zinc-700/50">{trx.pelanggan?.kategori || 'NON'}</span>
+                      <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 ml-1.5 rounded uppercase font-semibold tracking-wide border border-zinc-200 dark:border-zinc-700/50">
+                        {trx.pelanggan?.kategori?.namaKategori || 'KOSONG'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium">{trx.jumlahTabung} Tabung</td>
                     <td className="px-6 py-4 whitespace-nowrap font-semibold text-[#52796F]">Rp {trx.totalHarga.toLocaleString('id-ID')}</td>

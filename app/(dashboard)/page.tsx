@@ -7,11 +7,11 @@ import { prosesTransaksiServer } from '@/app/actions/transaksi';
 import { toPng } from 'html-to-image';
 
 // update type to match 3nf relation from prisma include
-type Pelanggan = { 
-  nik: string; 
-  nama: string; 
-  idKategori: string; 
-  kategori: { namaKategori: string }; 
+type Pelanggan = {
+  nik: string;
+  nama: string;
+  idKategori: string;
+  kategori: { namaKategori: string };
 };
 
 export default function KasirPage() {
@@ -26,7 +26,7 @@ export default function KasirPage() {
   const hiddenReceiptRef = useRef<HTMLDivElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  
+
   // state to prevent hydration mismatch for date
   const [isMounted, setIsMounted] = useState(false);
 
@@ -37,12 +37,12 @@ export default function KasirPage() {
       hargaPerTabung = 19000;
     }
   }
-  
+
   const totalHarga = jumlahTabung * hargaPerTabung;
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
+    setTimeout(() => setNotification(null), 8000);
   };
 
   useEffect(() => {
@@ -79,27 +79,39 @@ export default function KasirPage() {
     if (jumlahTabung < 1) { showNotification('Jumlah tabung minimal adalah 1.', 'error'); return; }
 
     setIsProcessing(true);
-    
+
     // map the state to idstatus for backend consumption
-    const data = { 
-      nikPelanggan: selectedPelanggan.nik, 
-      jumlahTabung, 
-      idStatus: metodePembayaran 
+    const data = {
+      nikPelanggan: selectedPelanggan.nik,
+      jumlahTabung,
+      idStatus: metodePembayaran
     };
-    
+
     const res = await prosesTransaksiServer(data);
-    
+
     if (res?.error) {
       showNotification(res.error, 'error');
     } else {
       if (hiddenReceiptRef.current) {
         try {
-          const dataUrl = await toPng(hiddenReceiptRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' });
+          const dataUrl = await toPng(hiddenReceiptRef.current, {
+            pixelRatio: 2,
+            backgroundColor: '#ffffff',
+            // fix: ignore external fonts to prevent remote css errors
+            skipFonts: true,
+            // fix: filter out external stylesheet links
+            filter: (node) => {
+              if (node.tagName === 'LINK') return false;
+              return true;
+            }
+          });
           const link = document.createElement("a");
           link.download = `nota-${selectedPelanggan.nik}-${new Date().getTime()}.png`;
           link.href = dataUrl;
           link.click();
-        } catch (err) { console.error("gagal mencetak nota:", err); }
+        } catch (err) {
+          console.error('gagal mencetak nota:', err);
+        }
       }
       showNotification('Transaksi dicatat dan nota diunduh!', 'success');
       setSelectedPelanggan(null); setSearchQuery(''); setJumlahTabung(1); setMetodePembayaran('S01');
@@ -122,7 +134,7 @@ export default function KasirPage() {
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Kasir Utama</h1>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start pb-36 lg:pb-0">
-        
+
         {/* left column: input */}
         <div className="flex-1 w-full space-y-6">
           <div className="bg-white dark:bg-zinc-950 p-4 md:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
@@ -194,9 +206,9 @@ export default function KasirPage() {
 
         {/* right column: cart (unified on desktop, floating on mobile) */}
         <div className="w-full lg:w-[400px] lg:sticky lg:top-8 z-30">
-          
+
           <div className="lg:bg-white lg:dark:bg-zinc-950 lg:rounded-xl lg:shadow-sm lg:border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col h-fit">
-            
+
             {/* header & items (desktop only) */}
             <div className="hidden lg:block bg-white dark:bg-zinc-950">
               <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
