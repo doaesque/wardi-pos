@@ -51,6 +51,7 @@ export async function editEmployee(formData: FormData) {
   const password = formData.get('password') as string; // optional
   const role = formData.get('role') as string;
 
+  // validate empty inputs
   if (!id || !nama || !username || !role) {
     return { error: 'Kolom nama, pengguna, dan peran wajib diisi.' };
   }
@@ -65,15 +66,16 @@ export async function editEmployee(formData: FormData) {
       return { error: 'Nama pengguna tersebut sudah dipakai oleh akun lain.' };
     }
 
-    // prepare update payload
-    const updateData: any = { 
+    // prepare update payload with proper typings instead of 'any'
+    const updateData: { nama: string; username: string; role: string; password?: string } = { 
       nama, 
       username, 
       role
     };
     
+    // update password only if provided
     if (password && password.trim() !== '') {
-      updateData.password = password; // update password only if provided
+      updateData.password = password; 
     }
 
     // update in database
