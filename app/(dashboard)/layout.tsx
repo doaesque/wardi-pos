@@ -18,11 +18,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-[100dvh] bg-zinc-50 dark:bg-zinc-950">
+    // match the subtle green tint from the login page
+    <div className="flex min-h-[100dvh] bg-[#f0f4f3] dark:bg-zinc-950 transition-colors duration-300">
       <Sidebar user={currentUser} />
-      {/* pt-16 ditambahkan agar konten tidak tertabrak oleh top navbar di mobile */}
-      <main className="flex-1 h-[100dvh] overflow-y-auto pt-16 md:pt-0">
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      {/* pt-14 matches the h-14 mobile navbar in sidebar */}
+      <main className="flex-1 h-[100dvh] overflow-y-auto pt-14 md:pt-0">
+        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           {children}
         </div>
       </main>
