@@ -12,7 +12,7 @@ export function Sidebar({ user }: { user?: any }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
-  // otomatis tutup sidebar saat berpindah halaman di mobile
+  // automatically close sidebar when changing pages on mobile
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
@@ -27,7 +27,7 @@ export function Sidebar({ user }: { user?: any }) {
 
   return (
     <>
-      {/* Mobile Top Navbar (Hanya muncul di Mobile) */}
+      {/* mobile top navbar (only appears on mobile) */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#52796F] dark:bg-[#1a2622] text-white z-40 flex items-center justify-between px-4 shadow-md">
         <Link href="/" className="text-xl font-black tracking-widest drop-shadow-md text-white select-none inline-block">
           WARDI<span className="text-[#a1cbbc] dark:text-[#52796F]">POS</span>
@@ -37,7 +37,7 @@ export function Sidebar({ user }: { user?: any }) {
         </button>
       </div>
 
-      {/* Backdrop Hitam Transparan untuk Mobile */}
+      {/* transparent black backdrop for mobile */}
       {isOpen && (
         <div 
           className="md:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm transition-opacity"
@@ -45,10 +45,10 @@ export function Sidebar({ user }: { user?: any }) {
         />
       )}
 
-      {/* Sidebar Induk (Drawer di Mobile, Tetap di Desktop) */}
+      {/* main sidebar (drawer on mobile, fixed on desktop) */}
       <aside className={`fixed md:sticky top-0 left-0 z-50 h-[100dvh] w-72 md:w-64 bg-[#52796F] dark:bg-[#1a2622] text-white flex flex-col transition-transform duration-300 shadow-2xl md:shadow-xl ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         
-        {/* Tombol Tutup Khusus Mobile */}
+        {/* close button specifically for mobile */}
         <button 
           onClick={() => setIsOpen(false)} 
           className="md:hidden absolute top-4 right-4 p-2 bg-black/10 rounded-full text-white/80 hover:text-white transition-colors"
