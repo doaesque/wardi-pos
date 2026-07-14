@@ -12,25 +12,25 @@ export async function addCustomer(formData: FormData) {
   if (!nik || !nama || !idKategori) {
     return { error: 'Semua data pelanggan wajib diisi.' };
   }
-  
+
   if (nik.length !== 16) {
     return { error: 'Nomor Induk Kependudukan (NIK) harus berjumlah tepat 16 angka.' };
   }
 
   try {
-    const existingCustomer = await prisma.pelanggan.findUnique({ 
-      where: { nik } 
+    const existingCustomer = await prisma.pelanggan.findUnique({
+      where: { nik }
     });
-    
+
     if (existingCustomer) {
       return { error: 'NIK tersebut sudah terdaftar di dalam sistem.' };
     }
 
     // create new customer with the relational category foreign key
-    await prisma.pelanggan.create({ 
-      data: { nik, nama, idKategori } 
+    await prisma.pelanggan.create({
+      data: { nik, nama, idKategori }
     });
-    
+
     revalidatePath('/pelanggan');
     return { success: true };
   } catch (error) {
@@ -49,11 +49,11 @@ export async function editCustomer(formData: FormData) {
   }
 
   try {
-    await prisma.pelanggan.update({ 
-      where: { nik }, 
-      data: { nama, idKategori } 
+    await prisma.pelanggan.update({
+      where: { nik },
+      data: { nama, idKategori }
     });
-    
+
     revalidatePath('/pelanggan');
     return { success: true };
   } catch (error) {
@@ -64,10 +64,10 @@ export async function editCustomer(formData: FormData) {
 // delete customer
 export async function deleteCustomer(nik: string) {
   try {
-    await prisma.pelanggan.delete({ 
-      where: { nik } 
+    await prisma.pelanggan.delete({
+      where: { nik }
     });
-    
+
     revalidatePath('/pelanggan');
     return { success: true };
   } catch (error) {
@@ -90,7 +90,7 @@ export async function searchPelanggan(query: string) {
       take: 5,
       include: { kategori: true }
     });
-    
+
     return results;
   } catch (error) {
     console.error('error searching customer:', error);
