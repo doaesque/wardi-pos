@@ -2,8 +2,9 @@
 
 import prisma from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { MetodePembayaran } from '@prisma/client';
 
-// expect string 'Tunai' or 'Transfer' from client ui
+// expect string 'TUNAI' or 'TRANSFER' from client ui
 type DataTransaksi = {
   nikPelanggan: string;
   jumlahTabung: number;
@@ -58,9 +59,13 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
       });
     }
 
-    // get payment status id based on string sent by frontend
+    // normalize enum and status string format based on frontend payload
+    const enumValue = data.metodePembayaran.toUpperCase() === 'TRANSFER' ? MetodePembayaran.TRANSFER : MetodePembayaran.TUNAI;
+    const statusString = enumValue === MetodePembayaran.TRANSFER ? 'Transfer' : 'Tunai';
+
+    // get payment status id based on normalized string
     const statusPembayaran = await prisma.statusPembayaran.findUnique({
-      where: { namaStatus: data.metodePembayaran }
+      where: { namaStatus: statusString }
     });
 
     if (!statusPembayaran) {
@@ -113,7 +118,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
     const hargaPerTabung = pelanggan.kategori.namaKategori === 'Rumah Tangga' ? 20000 : 19000;
     const finalTotalHarga = data.jumlahTabung * hargaPerTabung;
 
-    // create the transaction record using foreign key
+    // create the transaction record using foreign key AND the required enum
     await prisma.transaksi.create({
       data: {
         idPelanggan: pelanggan.idPelanggan,
@@ -121,6 +126,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
         jumlahTabung: data.jumlahTabung,
         totalHarga: finalTotalHarga,
         idStatus: statusPembayaran.idStatus,
+        metodePembayaran: enumValue, // data enum yang wajib dimasukkan ke schema
       },
     });
 
