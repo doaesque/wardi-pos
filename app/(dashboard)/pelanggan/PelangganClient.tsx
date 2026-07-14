@@ -247,7 +247,30 @@ export default function PelangganClient({ initialData, categories }: { initialDa
                       </div>
                       <div className="flex justify-between items-center mb-3"><h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Daftar Transaksi</h4><div className="relative"><select value={monthOffset} onChange={(e) => changeHistoryMonth(Number(e.target.value))} className="appearance-none text-xs border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 rounded-md pl-2 pr-7 py-1.5 outline-none text-zinc-700 dark:text-zinc-300 cursor-pointer"><option value={0}>Bulan Ini</option><option value={1}>1 Bulan Lalu</option><option value={2}>2 Bulan Lalu</option></select><ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" /></div></div>
                       <div className="max-h-48 overflow-y-auto border border-zinc-200 dark:border-zinc-800 rounded-lg custom-scrollbar">
-                        <table className="w-full text-left text-xs"><thead className="bg-zinc-50 dark:bg-zinc-900 text-zinc-500 sticky top-0 border-b border-zinc-200 dark:border-zinc-800"><tr><th className="px-4 py-2 font-medium">Tanggal</th><th className="px-4 py-2 font-medium">Jumlah</th><th className="px-4 py-2 font-medium hidden md:table-cell">Kasir</th></tr></thead><tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">{historyData.listRiwayat.length === 0 ? <tr><td colSpan={3} className="px-4 py-6 text-center text-zinc-500">Tidak ada transaksi di bulan ini.</td></tr> : historyData.listRiwayat.map((trx: any) => (<tr key={trx.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50"><td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">{new Date(trx.tanggal).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td><td className="px-4 py-2 font-semibold text-[#52796F]">{trx.jumlah} Tbg</td><td className="px-4 py-2 text-zinc-500 hidden md:table-cell">{trx.kasir}</td></tr>))}</tbody></table>
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-zinc-50 dark:bg-zinc-900 text-zinc-500 sticky top-0 border-b border-zinc-200 dark:border-zinc-800">
+                            <tr>
+                              <th className="px-4 py-2 font-medium">Tanggal</th>
+                              <th className="px-4 py-2 font-medium">Jumlah</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                            {historyData.listRiwayat.length === 0 ? (
+                              <tr>
+                                <td colSpan={2} className="px-4 py-6 text-center text-zinc-500">Tidak ada transaksi di bulan ini.</td>
+                              </tr>
+                            ) : (
+                              historyData.listRiwayat.map((trx: any) => (
+                                <tr key={trx.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                                  <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">
+                                    {new Date(trx.tanggal).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                                  </td>
+                                  <td className="px-4 py-2 font-semibold text-[#52796F]">{trx.jumlah} Tbg</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   ) : null}
