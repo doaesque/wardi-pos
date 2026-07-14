@@ -18,8 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    // match the subtle green tint from the login page
-    <div className="flex min-h-[100dvh] bg-[#f0f4f3] dark:bg-zinc-950 transition-colors duration-300">
+    <div className="flex min-h-[100dvh] bg-[#fafafa] dark:bg-zinc-950 transition-colors duration-300">
       <Sidebar user={currentUser} />
       {/* pt-14 matches the h-14 mobile navbar in sidebar */}
       <main className="flex-1 h-[100dvh] overflow-y-auto pt-14 md:pt-0">
