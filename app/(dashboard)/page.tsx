@@ -242,6 +242,15 @@ export default function KasirPage() {
             <div className="border-b-2 border-dashed border-gray-400 mt-4 mb-1"></div>
           </div>
           <div className="mb-4 space-y-1">
+            {/* start revision: add nota id */}
+            <div className="flex justify-between">
+              <span className="text-gray-600">ID Nota:</span>
+              {/* using timestamp as placeholder, replace with actual id from db if needed */}
+              <span className="font-semibold text-right max-w-[140px] truncate">
+                {selectedPelanggan ? `TRX-${new Date().getTime().toString().slice(-6)}` : "-"}
+              </span>
+            </div>
+            {/* end revision */}
             <div className="flex justify-between">
               <span className="text-gray-600">Pelanggan:</span>
               <span className="font-semibold text-right max-w-[140px] truncate">{selectedPelanggan ? selectedPelanggan.nama : "-"}</span>
