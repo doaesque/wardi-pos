@@ -148,7 +148,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
     });
 
     revalidatePath('/transaksi');
-    return { success: true };
+    return { success: true, transactionId: customId };
   } catch (error) {
     console.error('transaction error:', error);
 

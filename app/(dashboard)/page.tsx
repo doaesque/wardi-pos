@@ -26,6 +26,9 @@ export default function KasirPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // new state to hold the real transaction id for the receipt
+  const [notaId, setNotaId] = useState<string>('');
+
   // set dynamic price based on category id (k01 is rumah tangga)
   let hargaPerTabung = 20000;
   if (selectedPelanggan && selectedPelanggan.idKategori !== 'K01') {
@@ -80,29 +83,39 @@ export default function KasirPage() {
 
     if (res?.error) {
       showNotification(res.error, 'error');
+      setIsProcessing(false);
     } else {
-      // download receipt logic
-      if (hiddenReceiptRef.current) {
-        try {
-          const dataUrl = await toPng(hiddenReceiptRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' });
-          const link = document.createElement("a");
-          link.download = `nota-${selectedPelanggan.nik}-${new Date().getTime()}.png`;
-          link.href = dataUrl;
-          link.click();
-        } catch (err) {
-          console.error("gagal mencetak nota:", err);
+      // get the real id from server action, fallback to timestamp if missing
+      const finalId = res?.transactionId || `TRX-${new Date().getTime().toString().slice(-6)}`;
+
+      // set the id so react can render it into the hidden receipt dom
+      setNotaId(finalId);
+
+      // wait 150ms for react to flush the state change to the dom before capturing
+      setTimeout(async () => {
+        if (hiddenReceiptRef.current) {
+          try {
+            const dataUrl = await toPng(hiddenReceiptRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' });
+            const link = document.createElement("a");
+            link.download = `nota-${selectedPelanggan.nik}-${new Date().getTime()}.png`;
+            link.href = dataUrl;
+            link.click();
+          } catch (err) {
+            console.error("gagal mencetak nota:", err);
+          }
         }
-      }
 
-      showNotification('Transaksi dicatat dan nota diunduh!', 'success');
+        showNotification('Transaksi dicatat dan nota diunduh!', 'success');
 
-      // clear form
-      setSelectedPelanggan(null);
-      setSearchQuery('');
-      setJumlahTabung(1);
-      setMetodePembayaran('S01');
+        // clear form and states
+        setSelectedPelanggan(null);
+        setSearchQuery('');
+        setJumlahTabung(1);
+        setMetodePembayaran('S01');
+        setNotaId('');
+        setIsProcessing(false);
+      }, 150);
     }
-    setIsProcessing(false);
   };
 
   const currentDate = new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
@@ -242,15 +255,12 @@ export default function KasirPage() {
             <div className="border-b-2 border-dashed border-gray-400 mt-4 mb-1"></div>
           </div>
           <div className="mb-4 space-y-1">
-            {/* start revision: add nota id */}
             <div className="flex justify-between">
               <span className="text-gray-600">ID Nota:</span>
-              {/* using timestamp as placeholder, replace with actual id from db if needed */}
               <span className="font-semibold text-right max-w-[140px] truncate">
-                {selectedPelanggan ? `TRX-${new Date().getTime().toString().slice(-6)}` : "-"}
+                {notaId || "-"}
               </span>
             </div>
-            {/* end revision */}
             <div className="flex justify-between">
               <span className="text-gray-600">Pelanggan:</span>
               <span className="font-semibold text-right max-w-[140px] truncate">{selectedPelanggan ? selectedPelanggan.nama : "-"}</span>
