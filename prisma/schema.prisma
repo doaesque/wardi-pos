@@ -17,13 +17,7 @@ model KategoriPelanggan {
   pelanggan    Pelanggan[]
 }
 
-// payment methods enum
-enum MetodePembayaran {
-  TUNAI
-  TRANSFER
-}
-
-// payment status model
+// payment status model (used for payment methods to maintain flexibility)
 model StatusPembayaran {
   idStatus   String      @id @default(cuid()) // primary key
   namaStatus String      @unique
@@ -67,7 +61,6 @@ model Transaksi {
   jumlahTabung     Int
   totalHarga       Int
   idStatus         String
-  metodePembayaran MetodePembayaran // tunai or transfer
   tanggalTransaksi DateTime         @default(now())
 
   // relation to payment status
