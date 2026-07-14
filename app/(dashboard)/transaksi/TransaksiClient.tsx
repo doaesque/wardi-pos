@@ -4,26 +4,26 @@ import { useState, useMemo } from 'react';
 import { Search, Filter, Calendar, ChevronDown } from 'lucide-react';
 
 // update type to match 3nf relation from prisma include
-type Transaksi = { 
-  id: string; 
-  tanggalTransaksi: Date; 
-  jumlahTabung: number; 
-  totalHarga: number; 
+type Transaksi = {
+  id: string;
+  tanggalTransaksi: Date;
+  jumlahTabung: number;
+  totalHarga: number;
   status?: { namaStatus: string } | null;
-  pelanggan: { 
-    nama: string; 
+  pelanggan: {
+    nama: string;
     kategori: { namaKategori: string } | null;
-  } | null; 
-  kasir?: { nama: string } | null; 
+  } | null;
+  kasir?: { nama: string } | null;
 };
 
 export function TransaksiClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<'semua' | 'bulan' | 'spesifik'>('semua');
-  
+
   const currentYear = new Date().getFullYear();
   const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
-  
+
   const [filterBulan, setFilterBulan] = useState(currentMonth);
   const [filterTahun, setFilterTahun] = useState(currentYear.toString());
   const [filterTanggalSpesifik, setFilterTanggalSpesifik] = useState('');
@@ -34,8 +34,8 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     return initialData.filter((trx: Transaksi) => {
       const trxDate = new Date(trx.tanggalTransaksi);
       const searchLower = search.toLowerCase();
-      const matchSearch = trx.id.toLowerCase().includes(searchLower) || 
-                          (trx.pelanggan?.nama || 'umum').toLowerCase().includes(searchLower) || 
+      const matchSearch = trx.id.toLowerCase().includes(searchLower) ||
+                          (trx.pelanggan?.nama || 'umum').toLowerCase().includes(searchLower) ||
                           (trx.kasir?.nama || '').toLowerCase().includes(searchLower);
 
       if (!matchSearch) return false;
@@ -50,9 +50,18 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
   const totalTabungFiltered = filteredData.reduce((acc, trx) => acc + trx.jumlahTabung, 0);
   const totalUangFiltered = filteredData.reduce((acc, trx) => acc + trx.totalHarga, 0);
 
+  // helper to shorten category names for cleaner ui
+  const getShortCategory = (namaKategori: string | undefined | null) => {
+    if (!namaKategori) return 'NON';
+    const lower = namaKategori.toLowerCase();
+    if (lower.includes('rumah')) return 'RT';
+    if (lower.includes('mikro') || lower === 'um') return 'UM';
+    return namaKategori.substring(0, 4).toUpperCase();
+  };
+
   return (
     <div className="space-y-4">
-      
+
       {/* dynamic stats container */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
@@ -129,10 +138,13 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
                       <div className="flex items-center gap-1.5"><Calendar size={12} className="text-zinc-400" />{new Date(trx.tanggalTransaksi).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">{trx.pelanggan?.nama || 'Umum'}</span> 
-                      <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 ml-1.5 rounded uppercase font-semibold tracking-wide border border-zinc-200 dark:border-zinc-700/50">{trx.pelanggan?.kategori?.namaKategori || 'NON'}</span>
+                      <div className="flex items-center">
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">{trx.pelanggan?.nama || 'Umum'}</span>
+                        <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 ml-2 rounded uppercase font-semibold tracking-wide border border-zinc-200 dark:border-zinc-700/50 shrink-0">
+                          {getShortCategory(trx.pelanggan?.kategori?.namaKategori)}
+                        </span>
+                      </div>
                     </td>
-                    {/* using status relation instead of kasir or enum to reflect payment method */}
                     <td className="px-6 py-4 whitespace-nowrap text-zinc-500">{trx.status?.namaStatus || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium">{trx.jumlahTabung} Tabung</td>
                     <td className="px-6 py-4 whitespace-nowrap font-semibold text-[#52796F]">Rp {trx.totalHarga.toLocaleString('id-ID')}</td>
