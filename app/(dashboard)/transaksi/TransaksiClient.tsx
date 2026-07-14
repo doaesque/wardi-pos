@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Filter, Calendar, ChevronDown } from 'lucide-react';
+import { Search, Filter, Calendar, ChevronDown, ArrowUpDown } from 'lucide-react';
 
 // update type to match 3nf relation from prisma include
 type Transaksi = {
@@ -27,11 +27,23 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
   const [filterBulan, setFilterBulan] = useState(currentMonth);
   const [filterTahun, setFilterTahun] = useState(currentYear.toString());
   const [filterTanggalSpesifik, setFilterTanggalSpesifik] = useState('');
+  
+  // sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
 
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   const filteredData = useMemo(() => {
-    return initialData.filter((trx: Transaksi) => {
+    // 1. apply filters
+    let result = initialData.filter((trx: Transaksi) => {
       const trxDate = new Date(trx.tanggalTransaksi);
       const searchLower = search.toLowerCase();
       const matchSearch = trx.id.toLowerCase().includes(searchLower) ||
@@ -44,7 +56,39 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
       if (filterMode === 'bulan') return (filterBulan ? (trxDate.getMonth() + 1).toString().padStart(2, '0') === filterBulan : true) && (filterTahun ? trxDate.getFullYear().toString() === filterTahun : true);
       return true;
     });
-  }, [initialData, search, filterMode, filterBulan, filterTahun, filterTanggalSpesifik]);
+
+    // 2. apply sorting
+    if (sortConfig !== null) {
+      result.sort((a, b) => {
+        let aValue: any = '';
+        let bValue: any = '';
+
+        switch (sortConfig.key) {
+          case 'id':
+            aValue = a.id; bValue = b.id; break;
+          case 'waktu':
+            aValue = new Date(a.tanggalTransaksi).getTime(); bValue = new Date(b.tanggalTransaksi).getTime(); break;
+          case 'pelanggan':
+            aValue = a.pelanggan?.nama || 'Umum'; bValue = b.pelanggan?.nama || 'Umum'; break;
+          case 'pembayaran':
+            aValue = a.status?.namaStatus || ''; bValue = b.status?.namaStatus || ''; break;
+          case 'jumlah':
+            aValue = a.jumlahTabung; bValue = b.jumlahTabung; break;
+          case 'total':
+            aValue = a.totalHarga; bValue = b.totalHarga; break;
+        }
+
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [initialData, search, filterMode, filterBulan, filterTahun, filterTanggalSpesifik, sortConfig]);
 
   // calculate dynamic stats based on filtered data
   const totalTabungFiltered = filteredData.reduce((acc, trx) => acc + trx.jumlahTabung, 0);
@@ -56,6 +100,7 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
     const lower = namaKategori.toLowerCase();
     if (lower.includes('rumah')) return 'RT';
     if (lower.includes('mikro') || lower === 'um') return 'UM';
+    if (lower.includes('pengecer') || lower.includes('ecer')) return 'ECER';
     return namaKategori.substring(0, 4).toUpperCase();
   };
 
@@ -117,14 +162,26 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden shadow-sm">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-400 min-w-[700px]">
-            <thead className="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 uppercase font-semibold border-b border-zinc-200 dark:border-zinc-800">
+            <thead className="bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 uppercase font-semibold border-b border-zinc-200 dark:border-zinc-800 select-none">
               <tr>
-                <th className="px-6 py-4 whitespace-nowrap">ID Transaksi</th>
-                <th className="px-6 py-4 whitespace-nowrap">Waktu</th>
-                <th className="px-6 py-4 whitespace-nowrap">Pelanggan</th>
-                <th className="px-6 py-4 whitespace-nowrap">Pembayaran</th>
-                <th className="px-6 py-4 whitespace-nowrap">Jumlah</th>
-                <th className="px-6 py-4 whitespace-nowrap">Total</th>
+                <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('id')}>
+                  <div className="flex items-center gap-2">ID Transaksi <ArrowUpDown size={14} className="text-zinc-400" /></div>
+                </th>
+                <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('waktu')}>
+                  <div className="flex items-center gap-2">Waktu <ArrowUpDown size={14} className="text-zinc-400" /></div>
+                </th>
+                <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('pelanggan')}>
+                  <div className="flex items-center gap-2">Pelanggan <ArrowUpDown size={14} className="text-zinc-400" /></div>
+                </th>
+                <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('pembayaran')}>
+                  <div className="flex items-center gap-2">Pembayaran <ArrowUpDown size={14} className="text-zinc-400" /></div>
+                </th>
+                <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('jumlah')}>
+                  <div className="flex items-center gap-2">Jumlah <ArrowUpDown size={14} className="text-zinc-400" /></div>
+                </th>
+                <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50" onClick={() => handleSort('total')}>
+                  <div className="flex items-center gap-2">Total <ArrowUpDown size={14} className="text-zinc-400" /></div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
