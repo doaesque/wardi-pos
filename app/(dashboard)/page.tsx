@@ -39,7 +39,7 @@ export default function KasirPage() {
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
+    setTimeout(() => setNotification(null), 1000);
   };
 
   useEffect(() => {
