@@ -3,7 +3,7 @@
 import prisma from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
-// expect status id 'S01' (tunai) or 'S02' (transfer) from client ui
+// expect status id 's01' (tunai) or 's02' (transfer) from client ui
 type DataTransaksi = {
   nikPelanggan: string;
   jumlahTabung: number;
@@ -112,9 +112,33 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
     const hargaPerTabung = pelanggan.kategori.namaKategori === 'Rumah Tangga' ? 20000 : 19000;
     const finalTotalHarga = data.jumlahTabung * hargaPerTabung;
 
-    // create the transaction record using foreign key
+    // generate custom transaction id based on date
+    const dateObj = new Date();
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+
+    // count transactions today for sequence number
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const countToday = await prisma.transaksi.count({
+      where: {
+        tanggalTransaksi: {
+          gte: today,
+          lte: todayEnd,
+        },
+      },
+    });
+
+    const sequence = String(countToday + 1).padStart(3, '0');
+    const customId = `TRX-${dateStr}-${sequence}`;
+
+    // create the transaction record using foreign key and custom id
     await prisma.transaksi.create({
       data: {
+        id: customId,
         idPelanggan: pelanggan.idPelanggan,
         idProduk: produk.idProduk,
         jumlahTabung: data.jumlahTabung,
