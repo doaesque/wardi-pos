@@ -99,10 +99,14 @@ async function main() {
 
     let idKategori = katRT.idKategori;
 
-    if (kategoriString.includes('um') || kategoriString.includes('pengecer')) {
-      // randomly pick between um and pengecer (50/50 chance)
-      const isUm = Math.random() < 0.5;
-      idKategori = isUm ? katUM.idKategori : katPengecer.idKategori;
+    // fix: specific matching to avoid "rumah" triggering "um"
+    if (kategoriString === 'um' || kategoriString === 'usaha mikro' || kategoriString.includes('mikro')) {
+      idKategori = katUM.idKategori;
+    } else if (kategoriString === 'pengecer' || kategoriString.includes('ecer')) {
+      idKategori = katPengecer.idKategori;
+    } else {
+      // defaults to rt (rumah tangga)
+      idKategori = katRT.idKategori;
     }
 
     // insert into database mapping the correct category foreign key
