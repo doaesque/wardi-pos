@@ -128,7 +128,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
     return { success: true };
   } catch (error) {
     console.error('transaction error:', error);
-    
+
     // type safe error parsing
     const errorMessage = error instanceof Error ? error.message : 'Kesalahan internal';
     return { error: `Transaksi ditolak oleh peladen. Detail: ${errorMessage}` };
