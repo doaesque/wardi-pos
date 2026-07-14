@@ -28,7 +28,9 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
   const sortKey = params.sortKey || 'waktu';
   const sortDirection = (params.sortDirection === 'asc' || params.sortDirection === 'desc') ? params.sortDirection : 'desc';
   const page = Number(params.page) || 1;
-  const itemsPerPage = 10;
+
+  // update items per page to 25 as requested
+  const itemsPerPage = 25;
 
   // build prisma where clause based on active filters
   const where: any = {};
