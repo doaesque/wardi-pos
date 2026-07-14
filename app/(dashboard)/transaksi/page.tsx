@@ -38,7 +38,6 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
     where.OR = [
       { id: { contains: search, mode: 'insensitive' } },
       { pelanggan: { nama: { contains: search, mode: 'insensitive' } } },
-      { kasir: { nama: { contains: search, mode: 'insensitive' } } },
     ];
   }
 
@@ -98,7 +97,6 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
             kategori: true,
           },
         },
-        kasir: true,
       },
     }),
     prisma.transaksi.count({ where }),
