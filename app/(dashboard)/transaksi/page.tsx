@@ -2,10 +2,10 @@ import prisma from '@/app/lib/prisma';
 import { TransaksiClient } from './TransaksiClient';
 
 export default async function TransaksiPage() {
-  // fetch transactions, including customer and category relations
-  // note: kasir relation is omitted because it doesn't exist in the current schema
+  // fetch transactions, including customer and category relations, and payment status
   const riwayatTransaksi = await prisma.transaksi.findMany({
-    include: {
+    include: { 
+      status: true,
       pelanggan: {
         include: {
           kategori: true
