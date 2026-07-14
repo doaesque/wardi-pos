@@ -27,7 +27,7 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
   const [filterBulan, setFilterBulan] = useState(currentMonth);
   const [filterTahun, setFilterTahun] = useState(currentYear.toString());
   const [filterTanggalSpesifik, setFilterTanggalSpesifik] = useState('');
-  
+
   // sorting state
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
@@ -190,7 +190,7 @@ export function TransaksiClient({ initialData }: { initialData: any[] }) {
               ) : (
                 filteredData.map((trx) => (
                   <tr key={trx.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap font-mono text-xs">{trx.id.slice(-8).toUpperCase()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap font-mono text-xs">{trx.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5"><Calendar size={12} className="text-zinc-400" />{new Date(trx.tanggalTransaksi).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
