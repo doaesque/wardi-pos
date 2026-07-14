@@ -55,7 +55,7 @@ model Pelanggan {
 
 // transaction history
 model Transaksi {
-  id               String           @id @default(cuid()) // unique id
+  id               String           @id // custom unique id based on date
   idPelanggan      String
   idProduk         String
   jumlahTabung     Int
