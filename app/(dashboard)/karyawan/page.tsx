@@ -11,9 +11,11 @@ export default async function KaryawanPage() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Data Karyawan</h1>
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Data Karyawan</h1>
+        </div>
       </div>
 
       <KaryawanClient initialData={karyawanList} currentUser={currentUserMock} />

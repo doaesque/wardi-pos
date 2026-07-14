@@ -67,15 +67,15 @@ export async function editEmployee(formData: FormData) {
     }
 
     // prepare update payload with proper typings instead of 'any'
-    const updateData: { nama: string; username: string; role: string; password?: string } = { 
-      nama, 
-      username, 
+    const updateData: { nama: string; username: string; role: string; password?: string } = {
+      nama,
+      username,
       role
     };
-    
+
     // update password only if provided
     if (password && password.trim() !== '') {
-      updateData.password = password; 
+      updateData.password = password;
     }
 
     // update in database

@@ -51,10 +51,10 @@ export async function loginUser(formData: FormData) {
 export async function logoutUser() {
   try {
     const cookieStore = await cookies();
-    
+
     // destroy session cookie
     cookieStore.delete('wardi_session');
-    
+
     return { success: true };
   } catch (error) {
     return { error: 'Terjadi gangguan saat memproses permintaan keluar.' };
