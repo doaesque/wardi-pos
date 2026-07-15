@@ -48,7 +48,7 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
       return { error: 'Pelanggan dengan NIK tersebut tidak ditemukan di basis data. Silakan daftarkan pelanggan terlebih dahulu.' };
     }
 
-    // ensure product exists for relation
+    // ensure product exists for relation and fetch base price from database
     let produk = await prisma.produk.findFirst();
     if (!produk) {
       // auto-create if product is missing
@@ -108,8 +108,10 @@ export async function prosesTransaksiServer(data: DataTransaksi) {
       }
     }
 
-    // calculate dynamic price
-    const hargaPerTabung = pelanggan.kategori.namaKategori === 'Rumah Tangga' ? 20000 : 19000;
+    // calculate dynamic price using base price from database product table
+    // apply 1000 discount for non-household categories (e.g., um and pengecer)
+    const basePrice = produk.harga;
+    const hargaPerTabung = pelanggan.idKategori === 'K01' ? basePrice : basePrice - 1000;
     const finalTotalHarga = data.jumlahTabung * hargaPerTabung;
 
     // generate custom transaction id based on date
