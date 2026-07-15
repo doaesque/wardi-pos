@@ -12,7 +12,7 @@ export function Sidebar({ user }: { user?: any }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
-  // automatically close sidebar on page change in mobile
+  // otomatis tutup sidebar saat berpindah halaman di mobile
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
@@ -27,7 +27,7 @@ export function Sidebar({ user }: { user?: any }) {
 
   return (
     <>
-      {/* mobile top navbar (only visible on mobile) */}
+      {/* Mobile Top Navbar (Hanya muncul di Mobile) */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#52796F] dark:bg-[#1a2622] text-white z-40 flex items-center justify-between px-4 shadow-md">
         <Link href="/" className="text-xl font-black tracking-widest drop-shadow-md text-white select-none inline-block">
           WARDI<span className="text-[#a1cbbc] dark:text-[#52796F]">POS</span>
@@ -37,7 +37,7 @@ export function Sidebar({ user }: { user?: any }) {
         </button>
       </div>
 
-      {/* transparent black backdrop for mobile */}
+      {/* Backdrop Hitam Transparan untuk Mobile */}
       {isOpen && (
         <div
           className="md:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm transition-opacity"
@@ -45,10 +45,10 @@ export function Sidebar({ user }: { user?: any }) {
         />
       )}
 
-      {/* main sidebar (drawer on mobile, fixed on desktop) */}
+      {/* Sidebar Induk (Drawer di Mobile, Tetap di Desktop) */}
       <aside className={`fixed md:sticky top-0 left-0 z-50 h-[100dvh] w-72 md:w-64 bg-[#52796F] dark:bg-[#1a2622] text-white flex flex-col transition-transform duration-300 shadow-2xl md:shadow-xl ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
 
-        {/* mobile close button */}
+        {/* Tombol Tutup Khusus Mobile */}
         <button
           onClick={() => setIsOpen(false)}
           className="md:hidden absolute top-4 right-4 p-2 bg-black/10 rounded-full text-white/80 hover:text-white transition-colors"
@@ -69,11 +69,9 @@ export function Sidebar({ user }: { user?: any }) {
         <nav className="flex flex-col p-4 gap-2 grow overflow-y-auto">
           <Link href="/" className={`p-3 rounded-lg transition-all duration-200 font-medium ${isActive('/') ? 'bg-white/20 text-white shadow-inner' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}>Kasir Utama</Link>
           <Link href="/pelanggan" className={`p-3 rounded-lg transition-all duration-200 font-medium ${isActive('/pelanggan') ? 'bg-white/20 text-white shadow-inner' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}>Data Pelanggan</Link>
+          <Link href="/transaksi" className={`p-3 rounded-lg transition-all duration-200 font-medium ${isActive('/transaksi') ? 'bg-white/20 text-white shadow-inner' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}>Riwayat Transaksi</Link>
           {user?.role === 'ADMIN' && (
-            <>
-              <Link href="/transaksi" className={`p-3 rounded-lg transition-all duration-200 font-medium ${isActive('/transaksi') ? 'bg-white/20 text-white shadow-inner' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}>Riwayat Transaksi</Link>
-              <Link href="/karyawan" className={`p-3 rounded-lg transition-all duration-200 font-medium ${isActive('/karyawan') ? 'bg-white/20 text-white shadow-inner' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}>Data Karyawan</Link>
-            </>
+            <Link href="/karyawan" className={`p-3 rounded-lg transition-all duration-200 font-medium ${isActive('/karyawan') ? 'bg-white/20 text-white shadow-inner' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}>Data Karyawan</Link>
           )}
         </nav>
 
