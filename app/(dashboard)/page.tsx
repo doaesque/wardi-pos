@@ -30,9 +30,10 @@ export default function KasirPage() {
   const [notaId, setNotaId] = useState<string>('');
 
   // set dynamic price based on category id (k01 is rumah tangga)
-  let hargaPerTabung = 20000;
+  const basePrice = 20000;
+  let hargaPerTabung = basePrice;
   if (selectedPelanggan && selectedPelanggan.idKategori !== 'K01') {
-    hargaPerTabung = 19000;
+    hargaPerTabung = basePrice - 1000;
   }
 
   const totalHarga = jumlahTabung * hargaPerTabung;
